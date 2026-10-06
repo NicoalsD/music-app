@@ -184,7 +184,7 @@ Hay más detalle (diagramas de clases y de secuencia) en `.agents/architecture.m
 - **Tests de propiedades** (`fast-check`): secuencias aleatorias de insertar y eliminar, comprobando las invariantes de la sección 6 contra un modelo de referencia (un array simple, que solo se usa en el test).
 - `SpotifyOutput`, `SpotifyAuth` y `SpotifyProvider` se prueban con **SDK y `fetch` simulados**. Los tests unitarios **nunca** usan la red real.
 - **Componentes**: Testing Library, consultando por rol o etiqueta accesible (no por clases CSS).
-- **E2E (Playwright)**: los flujos principales usan archivos locales de prueba (`e2e/fixtures/*.mp3`) para no depender de Spotify.
+- **E2E (Playwright)**: los flujos principales usan archivos locales de prueba (`e2e/fixtures/*.wav`) para no depender de Spotify.
 - Todo bug corregido va con un test de regresión que fallaba antes de la corrección.
 - La matriz completa de casos está en `.agents/testing-plan.md`.
 
