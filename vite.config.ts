@@ -7,6 +7,20 @@ export default defineConfig(({ command }) => ({
   plugins: [react()],
   server: { host: '127.0.0.1', port: 5173, strictPort: true },
   preview: { host: '127.0.0.1', port: 4173, strictPort: true },
+  build: {
+    rollupOptions: {
+      output: {
+        // Split stable vendor code into cacheable chunks.
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return undefined;
+          if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) return 'react';
+          if (/node_modules\/(motion|motion-dom|motion-utils|framer-motion)\//.test(id)) return 'motion';
+          if (/node_modules\/(@radix-ui|@floating-ui|@dnd-kit|sonner)\//.test(id)) return 'ui-vendor';
+          return undefined;
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     passWithNoTests: true,
