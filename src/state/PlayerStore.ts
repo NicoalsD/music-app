@@ -16,6 +16,13 @@ import type { StatePersistence, UnavailableRegistry } from './persistence';
 export const UNDO_WINDOW_MS = 5000;
 export const PLAYLIST_NAME_MAX = 60;
 
+/** Where imported local files go. `at.index` is zero-based. */
+export type ImportPlacement =
+  | { readonly kind: 'last' }
+  | { readonly kind: 'first' }
+  | { readonly kind: 'next' }
+  | { readonly kind: 'at'; readonly index: number };
+
 export type PlaylistNameProblem = 'empty' | 'too-long';
 
 /** Returns what is wrong with a playlist name, or null when it is valid. */
@@ -388,13 +395,19 @@ export class PlayerStore {
 
   // ---- local files ----------------------------------------------------------------
 
-  /** Imports audio files at the end of the active playlist. Returns how many were added. */
-  async importLocalFiles(files: readonly File[]): Promise<number> {
+  /**
+   * Imports audio files into the active playlist. Several files keep their selection order.
+   * `placement` defaults to the end; `at.index` is zero-based and clamped to 0..size because the
+   * list can change while the file picker is open.
+   */
+  async importLocalFiles(
+    files: readonly File[],
+    placement: ImportPlacement = { kind: 'last' },
+  ): Promise<number> {
     const { tracks, rejected } = await this.#local.importFiles(files);
     if (tracks.length > 0) {
-      this.#active().addManyLast(tracks);
+      this.#insertImported(tracks, placement);
       this.#mutated();
-      this.#notifier.notify(strings.library.importedCount(tracks.length));
     }
     if (rejected.length > 0) {
       this.#notifier.error(
@@ -404,6 +417,31 @@ export class PlayerStore {
       this.#notifier.error(strings.library.importNothing);
     }
     return tracks.length;
+  }
+
+  #insertImported(tracks: readonly Track[], placement: ImportPlacement): void {
+    const playlist = this.#active();
+    const count = tracks.length;
+    switch (placement.kind) {
+      case 'last':
+        playlist.addManyLast(tracks);
+        this.#notifier.notify(strings.library.importedCount(count));
+        return;
+      case 'first':
+        playlist.addManyFirst(tracks);
+        this.#notifier.notify(strings.library.importedAtStart(count));
+        return;
+      case 'next':
+        playlist.addManyNext(tracks);
+        this.#notifier.notify(strings.library.importedNext(count));
+        return;
+      case 'at': {
+        const index = Math.min(Math.max(Math.trunc(placement.index), 0), playlist.size);
+        playlist.addManyAt(index, tracks);
+        this.#notifier.notify(strings.library.importedAt(count, index + 1));
+        return;
+      }
+    }
   }
 
   // ---- Spotify session ----------------------------------------------------------------

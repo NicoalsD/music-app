@@ -162,6 +162,11 @@ export const strings = {
     deletedToast: (name: string) => `Playlist "${name}" eliminada`,
     listLabel: (name: string) => `Canciones de ${name}`,
     rowActions: 'Acciones de la fila',
+    rowMenuNamed: (title: string) => `Opciones de ${title}`,
+    moveTo: 'Mover a posición…',
+    moveTitle: 'Mover a posición',
+    moveDescription: (title: string) => `Elige la nueva posición de "${title}".`,
+    moveConfirm: 'Mover',
     totalDuration: (time: string) => `${time} en total`,
     removeSongNamed: (title: string) => `Quitar ${title} de la lista`,
     dragHandleNamed: (title: string) => `Reordenar ${title}`,
@@ -189,6 +194,22 @@ export const strings = {
     unavailableHint: 'Vuelve a importar este archivo',
     importedCount: (n: number) => (n === 1 ? '1 archivo importado' : `${n} archivos importados`),
     rejectedFiles: (names: string) => `No se pudieron importar: ${names}`,
+    importedAtStart: (n: number) =>
+      n === 1 ? '1 archivo agregado al inicio' : `${n} archivos agregados al inicio`,
+    importedNext: (n: number) =>
+      n === 1 ? '1 archivo agregado a continuación' : `${n} archivos agregados a continuación`,
+    importedAt: (n: number, pos: number) =>
+      n === 1
+        ? `1 archivo agregado en la posición ${pos}`
+        : `${n} archivos agregados en la posición ${pos}`,
+    importMoreOptions: 'Más opciones de importación',
+    importAtStart: 'Importar al inicio',
+    importNext: 'Importar a continuación',
+    importAtPosition: 'Importar en posición…',
+    importAtTitle: 'Importar en posición',
+    importAtDescription: 'Elige en qué posición se colgarán los archivos que selecciones.',
+    importPlaceholder: 'Archivos nuevos',
+    importConfirm: 'Elegir archivos',
     importNothing: 'No se encontraron archivos de audio compatibles.',
     importInputLabel: 'Seleccionar archivos de audio',
     restoredNotice: 'Los archivos locales no sobreviven a una recarga: vuelve a importarlos.',

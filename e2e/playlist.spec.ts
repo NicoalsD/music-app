@@ -1,4 +1,13 @@
-import { expect, importTones, openPlaylistTab, songButton, songOrder, test } from './fixtures';
+import {
+  expect,
+  importTones,
+  openPlaylistTab,
+  songButton,
+  songOrder,
+  test,
+  tonePath,
+} from './fixtures';
+import type { ToneName } from './fixtures';
 import type { Page } from '@playwright/test';
 
 const play = (page: Page) => page.getByRole('button', { name: 'Reproducir', exact: true });
@@ -37,6 +46,14 @@ async function moveRow(page: Page, name: string, from: number, to: number, total
   await page.keyboard.press('Space');
 }
 
+/** Picks "item" from the import split-menu and answers the file chooser it opens. */
+async function importFromMenu(page: Page, item: string, tone: ToneName) {
+  await page.getByRole('button', { name: 'Más opciones de importación' }).click();
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('menuitem', { name: item }).click();
+  return { chooser, tone };
+}
+
 test.describe('playlist', () => {
   test('imports three files in order, plays the first and marks it current', async ({ page }) => {
     await setup(page);
@@ -64,7 +81,7 @@ test.describe('playlist', () => {
   });
 
   test('reordering moves a song to the start, the end and position 2', async ({ page }) => {
-    // Local files can only be appended, so ordering is exercised with the keyboard drag.
+    // Keyboard drag (dnd-kit) is the third way to reorder, next to the import menu and the dialog.
     await setup(page);
 
     await moveRow(page, 'tone-c', 3, 1);
@@ -118,5 +135,36 @@ test.describe('playlist', () => {
 
     await page.getByRole('button', { name: 'Deshacer' }).click();
     await expect.poll(() => songOrder(page)).toEqual(['tone-a', 'tone-b', 'tone-c']);
+  });
+
+  test('"Importar al inicio" puts the new file at position 1', async ({ page }) => {
+    await setup(page);
+    const { chooser, tone } = await importFromMenu(page, 'Importar al inicio', 'tone-a');
+    await (await chooser).setFiles(tonePath(tone));
+    await expect.poll(() => songOrder(page)).toEqual(['tone-a', 'tone-a', 'tone-b', 'tone-c']);
+    await expect(page.getByText('4 canciones').first()).toBeVisible();
+  });
+
+  test('"Importar en posición…" lands the file at the chosen position', async ({ page }) => {
+    await setup(page);
+    await page.getByRole('button', { name: 'Más opciones de importación' }).click();
+    await page.getByRole('menuitem', { name: 'Importar en posición…' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Importar en posición' });
+    await dialog.getByRole('textbox', { name: 'Posición' }).fill('2');
+    await expect(dialog.getByText('Archivos nuevos')).toBeVisible();
+    const chooser = page.waitForEvent('filechooser');
+    await dialog.getByRole('button', { name: 'Elegir archivos' }).click();
+    await (await chooser).setFiles(tonePath('tone-c'));
+    await expect.poll(() => songOrder(page)).toEqual(['tone-a', 'tone-c', 'tone-b', 'tone-c']);
+  });
+
+  test('"Mover a posición…" moves the last song to position 1', async ({ page }) => {
+    await setup(page);
+    await page.getByRole('button', { name: 'Opciones de tone-c' }).click();
+    await page.getByRole('menuitem', { name: 'Mover a posición…' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Mover a posición' });
+    await dialog.getByRole('textbox', { name: 'Posición' }).fill('1');
+    await dialog.getByRole('button', { name: 'Mover' }).click();
+    await expect.poll(() => songOrder(page)).toEqual(['tone-c', 'tone-a', 'tone-b']);
   });
 });

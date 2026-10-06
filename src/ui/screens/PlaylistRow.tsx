@@ -3,12 +3,13 @@ import type { KeyboardEvent, ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Trash2 } from 'lucide-react';
+import { GripVertical, MoreHorizontal, Trash2 } from 'lucide-react';
 import type { SongView } from '../../state';
 import { Artwork } from '../components/Artwork';
 import { Hanko } from '../components/Hanko';
 import { IconButton } from '../components/IconButton';
 import { LanternCord } from '../components/LanternCord';
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '../components/Menu';
 import { formatTime } from '../format';
 import { strings } from '../i18n/es';
 import styles from './PlaylistRow.module.css';
@@ -17,13 +18,17 @@ export interface PlaylistRowProps {
   song: SongView;
   onPlay: (entryId: string) => void;
   onRemove: (entryId: string) => void;
+  /** Opens the "move to position" dialog for this entry. */
+  onMove: (entryId: string) => void;
+  /** The move action needs at least two songs. */
+  canMove: boolean;
 }
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 const DURATION_S = 0.22;
 
 /** One lantern on the cord: a sortable, animated row of the playlist. */
-function PlaylistRowBase({ song, onPlay, onRemove }: PlaylistRowProps) {
+function PlaylistRowBase({ song, onPlay, onRemove, onMove, canMove }: PlaylistRowProps) {
   const reduce = useReducedMotion();
   const {
     attributes,
@@ -98,6 +103,19 @@ function PlaylistRowBase({ song, onPlay, onRemove }: PlaylistRowProps) {
             icon={<Trash2 size={18} strokeWidth={1.5} />}
             onClick={() => onRemove(song.entryId)}
           />
+          <Menu>
+            <MenuTrigger asChild>
+              <IconButton
+                label={strings.playlist.rowMenuNamed(song.title)}
+                icon={<MoreHorizontal size={18} strokeWidth={1.5} />}
+              />
+            </MenuTrigger>
+            <MenuContent align="end">
+              <MenuItem disabled={!canMove} onSelect={() => onMove(song.entryId)}>
+                {strings.playlist.moveTo}
+              </MenuItem>
+            </MenuContent>
+          </Menu>
           <button
             type="button"
             {...attributes}

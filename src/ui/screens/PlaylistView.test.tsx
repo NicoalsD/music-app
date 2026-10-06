@@ -176,4 +176,55 @@ describe('PlaylistView', () => {
       await screen.findByText(strings.playlist.dndDropped('Title a', 2, 3)),
     ).toBeInTheDocument();
   });
+
+  describe('move to position', () => {
+    const openMove = async (user: ReturnType<typeof userEvent.setup>, title: string) => {
+      await user.click(screen.getByRole('button', { name: strings.playlist.rowMenuNamed(title) }));
+      await user.click(await screen.findByRole('menuitem', { name: strings.playlist.moveTo }));
+      return screen.findByRole('dialog', { name: strings.playlist.moveTitle });
+    };
+
+    it('moves the last song to position 1 and previews its new neighbours', async () => {
+      const { h, user } = renderList();
+      const dialog = await openMove(user, 'Title c');
+      const input = within(dialog).getByRole('textbox', { name: strings.add.positionLabel });
+      expect(input).toHaveValue('3');
+      await user.clear(input);
+      await user.type(input, '1');
+      const preview = within(dialog).getByRole('list', { name: strings.insert.previewLabel });
+      expect(
+        within(preview)
+          .getAllByRole('listitem')
+          .map((li) => li.textContent),
+      ).toEqual([`Title c${strings.insert.previewNew}`, 'Title a']);
+      await user.click(within(dialog).getByRole('button', { name: strings.playlist.moveConfirm }));
+      expect(titles(h)).toEqual(['Title c', 'Title a', 'Title b']);
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    });
+
+    it('only accepts positions 1..size', async () => {
+      const { h, user } = renderList();
+      const dialog = await openMove(user, 'Title a');
+      const input = within(dialog).getByRole('textbox', { name: strings.add.positionLabel });
+      await user.clear(input);
+      await user.type(input, '4');
+      expect(
+        within(dialog).getByRole('button', { name: strings.playlist.moveConfirm }),
+      ).toBeDisabled();
+      expect(within(dialog).getByText(strings.insert.errorRange(3))).toBeInTheDocument();
+      await user.clear(input);
+      await user.type(input, '3{Enter}');
+      expect(titles(h)).toEqual(['Title b', 'Title c', 'Title a']);
+    });
+
+    it('is disabled with a single song', async () => {
+      const { user } = renderList(['a']);
+      await user.click(
+        screen.getByRole('button', { name: strings.playlist.rowMenuNamed('Title a') }),
+      );
+      expect(
+        await screen.findByRole('menuitem', { name: strings.playlist.moveTo }),
+      ).toHaveAttribute('aria-disabled', 'true');
+    });
+  });
 });

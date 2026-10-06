@@ -411,6 +411,99 @@ describe('PlayerStore local files', () => {
   });
 });
 
+describe('PlayerStore local file placement', () => {
+  function incoming(h: Harness, ...ids: string[]): void {
+    h.local.nextResult = { tracks: ids.map((id) => makeTrack(id)), rejected: [] };
+  }
+
+  it('defaults to the end and keeps the selection order', async () => {
+    const h = createHarness();
+    seed(h, 'a');
+    incoming(h, 'x', 'y', 'z');
+    await h.store.importLocalFiles([]);
+    expect(titles(h)).toEqual(['Title a', 'Title x', 'Title y', 'Title z']);
+  });
+
+  it('first puts the files at positions 1..n in selection order', async () => {
+    const h = createHarness();
+    seed(h, 'a', 'b');
+    incoming(h, 'x', 'y');
+    expect(await h.store.importLocalFiles([], { kind: 'first' })).toBe(2);
+    expect(titles(h)).toEqual(['Title x', 'Title y', 'Title a', 'Title b']);
+    expect(h.notifier.notices).toContain(strings.library.importedAtStart(2));
+  });
+
+  it('first keeps the current pointer on the same song', async () => {
+    const h = createHarness();
+    seed(h, 'a', 'b');
+    h.store.playEntry(entryIdAt(h, 1));
+    const before = h.store.getSnapshot().currentEntryId;
+    incoming(h, 'x', 'y');
+    await h.store.importLocalFiles([], { kind: 'first' });
+    expect(h.store.getSnapshot().currentEntryId).toBe(before);
+    expect(titles(h)[3]).toBe('Title b');
+  });
+
+  it('next inserts the block after the current song', async () => {
+    const h = createHarness();
+    seed(h, 'a', 'b', 'c');
+    h.store.playEntry(entryIdAt(h, 1));
+    incoming(h, 'x', 'y');
+    await h.store.importLocalFiles([], { kind: 'next' });
+    expect(titles(h)).toEqual(['Title a', 'Title b', 'Title x', 'Title y', 'Title c']);
+    expect(h.notifier.notices).toContain(strings.library.importedNext(2));
+  });
+
+  it('at i places the files at i..i+n-1 and keeps current when inserting before it', async () => {
+    const h = createHarness();
+    seed(h, 'a', 'b', 'c');
+    h.store.playEntry(entryIdAt(h, 2));
+    const before = h.store.getSnapshot().currentEntryId;
+    incoming(h, 'x', 'y');
+    await h.store.importLocalFiles([], { kind: 'at', index: 1 });
+    expect(titles(h)).toEqual(['Title a', 'Title x', 'Title y', 'Title b', 'Title c']);
+    expect(h.store.getSnapshot().currentEntryId).toBe(before);
+    expect(h.notifier.notices).toContain(strings.library.importedAt(2, 2));
+  });
+
+  it('at clamps an index beyond the end and below zero', async () => {
+    const h = createHarness();
+    seed(h, 'a');
+    incoming(h, 'x');
+    await h.store.importLocalFiles([], { kind: 'at', index: 99 });
+    incoming(h, 'y');
+    await h.store.importLocalFiles([], { kind: 'at', index: -4 });
+    expect(titles(h)).toEqual(['Title y', 'Title a', 'Title x']);
+  });
+
+  it.each([
+    ['first', { kind: 'first' }],
+    ['next', { kind: 'next' }],
+    ['at', { kind: 'at', index: 0 }],
+  ] as const)('%s on an empty playlist adds the files and selects the first', async (_n, where) => {
+    const h = createHarness();
+    incoming(h, 'x', 'y');
+    await h.store.importLocalFiles([], where);
+    expect(titles(h)).toEqual(['Title x', 'Title y']);
+    expect(h.store.getSnapshot().currentEntryId).toBe(entryIdAt(h, 0));
+  });
+
+  it('does not touch the list when nothing was imported', async () => {
+    const h = createHarness();
+    seed(h, 'a');
+    await h.store.importLocalFiles([], { kind: 'first' });
+    expect(titles(h)).toEqual(['Title a']);
+    expect(h.notifier.errors).toEqual([strings.library.importNothing]);
+  });
+
+  it('move relinks a song to a new position', () => {
+    const h = createHarness();
+    seed(h, 'a', 'b', 'c');
+    h.store.move(2, 0);
+    expect(titles(h)).toEqual(['Title c', 'Title a', 'Title b']);
+  });
+});
+
 describe('PlayerStore Spotify session', () => {
   it('reflects auth and Spotify status, and initializes the player on login', async () => {
     const h = createHarness();

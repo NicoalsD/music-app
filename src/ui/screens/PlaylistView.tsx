@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
   DndContext,
   KeyboardSensor,
@@ -19,6 +19,7 @@ import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { strings } from '../i18n/es';
 import { ImportFilesButton } from './ImportFilesButton';
+import { PositionDialog } from './PositionDialog';
 import { PlaylistRow, PlaylistRows } from './PlaylistRow';
 import styles from './PlaylistView.module.css';
 
@@ -77,8 +78,12 @@ export function PlaylistView({ onGoToSearch }: PlaylistViewProps) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  const [movingId, setMovingId] = useState<string | null>(null);
+
   const onPlay = useCallback((entryId: string) => store.playEntry(entryId), [store]);
   const onRemove = useCallback((entryId: string) => void store.remove(entryId), [store]);
+
+  const onMove = useCallback((entryId: string) => setMovingId(entryId), []);
 
   function onDragEnd({ active, over }: DragEndEvent) {
     if (over === null || active.id === over.id) return;
@@ -86,6 +91,8 @@ export function PlaylistView({ onGoToSearch }: PlaylistViewProps) {
     const to = songs.findIndex((song) => song.entryId === over.id);
     if (from !== -1 && to !== -1) store.move(from, to);
   }
+
+  const moving = songs.find((song) => song.entryId === movingId) ?? null;
 
   if (songs.length === 0) {
     return (
@@ -121,11 +128,34 @@ export function PlaylistView({ onGoToSearch }: PlaylistViewProps) {
         <ol className={styles.list}>
           <PlaylistRows>
             {songs.map((song) => (
-              <PlaylistRow key={song.entryId} song={song} onPlay={onPlay} onRemove={onRemove} />
+              <PlaylistRow
+                key={song.entryId}
+                song={song}
+                onPlay={onPlay}
+                onRemove={onRemove}
+                onMove={onMove}
+                canMove={songs.length > 1}
+              />
             ))}
           </PlaylistRows>
         </ol>
       </SortableContext>
+      {moving === null ? null : (
+        <PositionDialog
+          key={moving.entryId}
+          open
+          onOpenChange={(open) => {
+            if (!open) setMovingId(null);
+          }}
+          titles={songs.filter((song) => song.entryId !== moving.entryId).map((song) => song.title)}
+          newLabel={moving.title}
+          title={strings.playlist.moveTitle}
+          description={strings.playlist.moveDescription(moving.title)}
+          confirmLabel={strings.playlist.moveConfirm}
+          initialPosition={moving.index + 1}
+          onConfirm={(index) => store.move(moving.index, index)}
+        />
+      )}
     </DndContext>
   );
 }
