@@ -1,0 +1,37 @@
+.frame {
+  display: inline-block;
+  flex: none;
+  box-sizing: border-box;
+  background: var(--paper-raised);
+  outline: var(--outline-width) solid var(--ink);
+  outline-offset: -1px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: var(--paper-sunk);
+}
+
+.fallback {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: var(--plum);
+  color: var(--on-plum);
+  font-family: var(--font-display);
+  font-weight: var(--weight-display-heavy);
+  line-height: 1;
+  overflow: hidden;
+}
+
+.seal {
+  position: absolute;
+  right: 6%;
+  bottom: 6%;
+}

@@ -1,0 +1,49 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+}
+
+.art {
+  margin-bottom: var(--space-2);
+}
+
+.sea {
+  fill: var(--ai);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.trough {
+  fill: var(--jade);
+  stroke: var(--ink);
+  stroke-width: 1.2;
+}
+
+.foam {
+  fill: var(--paper-raised);
+  stroke: var(--ink);
+  stroke-width: 0.6;
+}
+
+.sun {
+  fill: var(--shu);
+}
+
+.title {
+  font-size: var(--text-xl);
+}
+
+.body {
+  max-width: 36ch;
+  color: var(--ink-soft);
+  font-size: var(--text-md);
+}
+
+.action {
+  margin-top: var(--space-2);
+}

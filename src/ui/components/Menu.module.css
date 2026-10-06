@@ -1,0 +1,66 @@
+.content {
+  z-index: var(--z-menu);
+  min-width: 220px;
+  padding: var(--space-1);
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+  animation: menu-in var(--duration-fast) var(--ease-out);
+}
+
+.content[data-state='closed'] {
+  animation-direction: reverse;
+  animation-fill-mode: forwards;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--target-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: var(--text-md);
+  outline: none;
+  user-select: none;
+  cursor: pointer;
+}
+
+.item[data-highlighted] {
+  background: var(--ai-wash);
+  color: var(--ink);
+}
+
+.item:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.item[data-disabled] {
+  color: var(--ink-faint);
+  cursor: not-allowed;
+}
+
+.separator {
+  height: 1px;
+  margin: var(--space-1) var(--space-2);
+  background: var(--line);
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content {
+    animation-name: menu-fade;
+  }
+
+  @keyframes menu-fade {
+    from {
+      opacity: 0;
+    }
+  }
+}

@@ -1,0 +1,68 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.time {
+  flex: none;
+  min-width: 4ch;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.slider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  height: var(--target-min);
+  touch-action: none;
+  user-select: none;
+}
+
+.slider[data-disabled] {
+  opacity: 0.5;
+}
+
+/* The wire: a thin ink line. */
+.track {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  background: var(--ink-faint);
+  border-radius: 1px;
+}
+
+.range {
+  position: absolute;
+  height: 100%;
+  background: var(--ai);
+  border-radius: 1px;
+}
+
+/* The swallow perched on the wire is the thumb. */
+.thumb {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: grab;
+  transition: transform var(--duration-press) var(--ease-out);
+}
+
+.thumb:active {
+  cursor: grabbing;
+  transform: translateY(-1px);
+}
+
+.thumb:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 1px;
+}

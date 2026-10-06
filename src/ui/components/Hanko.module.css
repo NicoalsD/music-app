@@ -1,0 +1,14 @@
+.hanko {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  background: var(--shu);
+  color: var(--on-shu);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display);
+  font-weight: var(--weight-display-heavy);
+  line-height: 1;
+  user-select: none;
+  filter: url('#hanko-rough-edge');
+  transform: rotate(-3deg);
+}
