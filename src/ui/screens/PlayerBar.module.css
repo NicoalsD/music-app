@@ -1,0 +1,173 @@
+.bar {
+  position: fixed;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  left: var(--space-3);
+  z-index: var(--z-player);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+}
+
+.now {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.art {
+  flex: none;
+}
+
+.info {
+  display: grid;
+  min-width: 0;
+}
+
+.title {
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-display-heavy);
+  line-height: var(--leading-display);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link {
+  justify-self: start;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.center {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.play {
+  width: 52px;
+  height: 52px;
+}
+
+.spinner {
+  color: var(--on-ai);
+}
+
+.repeat {
+  position: relative;
+  display: inline-flex;
+}
+
+.badge {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  display: grid;
+  place-items: center;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--ai);
+  color: var(--on-ai);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  pointer-events: none;
+}
+
+.progress {
+  min-width: 0;
+}
+
+.hints {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-width: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+}
+
+.hints:empty {
+  display: none;
+}
+
+.hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.volume {
+  justify-self: end;
+}
+
+@media (max-width: 1023px) {
+  .hints {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .bar {
+    right: var(--space-2);
+    bottom: var(--space-2);
+    left: var(--space-2);
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-1) var(--space-3);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .center {
+    display: contents;
+  }
+
+  .controls {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .progress {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .noticeSlot {
+    grid-column: 1 / -1;
+  }
+
+  .optional,
+  .volume,
+  .hints {
+    display: none;
+  }
+
+  .play {
+    width: 44px;
+    height: 44px;
+  }
+
+  .title {
+    font-size: var(--text-md);
+  }
+}

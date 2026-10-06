@@ -1,0 +1,63 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--space-5);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.kanji {
+  writing-mode: vertical-rl;
+  color: var(--ochre);
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-display-heavy);
+  line-height: 1;
+}
+
+.summary {
+  flex: 1;
+  min-width: 12ch;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  text-align: right;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.drop {
+  position: absolute;
+  inset: var(--space-2);
+  z-index: var(--z-sticky);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-1);
+  border: var(--outline-width) dashed var(--ai);
+  border-radius: var(--radius-md);
+  background: var(--ai-wash);
+  text-align: center;
+  pointer-events: none;
+}
+
+.dropTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-display);
+}
+
+.dropBody {
+  color: var(--ink-soft);
+}

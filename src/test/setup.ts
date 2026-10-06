@@ -1,4 +1,8 @@
 import '@testing-library/jest-dom/vitest';
+import { MotionGlobalConfig } from 'motion/react';
+
+// Exit animations would keep removed rows in the DOM; jump straight to the end state in tests.
+MotionGlobalConfig.skipAnimations = true;
 
 // jsdom lacks these browser APIs; Radix, Motion and sonner need them.
 if (typeof window !== 'undefined') {

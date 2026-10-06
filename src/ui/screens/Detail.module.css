@@ -1,0 +1,72 @@
+.detail {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+}
+
+.back {
+  justify-self: start;
+  padding-left: var(--space-2);
+}
+
+.center {
+  display: grid;
+  place-items: center;
+  padding: var(--space-7) 0;
+}
+
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-5);
+}
+
+.heroText {
+  display: grid;
+  flex: 1;
+  gap: var(--space-2);
+  min-width: 200px;
+}
+
+.heading {
+  font-size: var(--text-2xl);
+  overflow-wrap: anywhere;
+}
+
+.sub {
+  color: var(--ink-soft);
+}
+
+.facts {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.sectionTitle {
+  font-size: var(--text-lg);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

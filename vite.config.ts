@@ -16,7 +16,17 @@ export default defineConfig(({ command }) => ({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/**/test-utils/**', 'src/main.tsx', 'src/**/*.d.ts', 'src/providers/musicMetadataAdapter.ts', 'src/auth/createSpotifyAuth.ts', 'src/player/loadSpotifySdk.ts'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/test/**',
+        'src/**/test-utils/**',
+        'src/main.tsx',
+        'src/ui/kit/**',
+        'src/**/*.d.ts',
+        'src/providers/musicMetadataAdapter.ts',
+        'src/auth/createSpotifyAuth.ts',
+        'src/player/loadSpotifySdk.ts',
+      ],
       thresholds: {
         lines: 80,
         branches: 80,

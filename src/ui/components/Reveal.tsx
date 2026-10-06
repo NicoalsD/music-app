@@ -40,7 +40,7 @@ export interface RevealListProps {
   children?: ReactNode;
   as?: 'ul' | 'ol';
   className?: string | undefined;
-  itemClassName?: string;
+  itemClassName?: string | undefined;
 }
 
 /** List whose items reveal with a 30ms stagger (only the first 8 are staggered). */

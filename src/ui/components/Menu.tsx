@@ -37,3 +37,15 @@ export function MenuSeparator({
 }: ComponentProps<typeof DropdownMenu.Separator>) {
   return <DropdownMenu.Separator {...rest} className={cx(styles.separator, className)} />;
 }
+
+export const MenuRadioGroup = DropdownMenu.RadioGroup;
+
+export function MenuRadioItem({
+  className,
+  ...rest
+}: ComponentProps<typeof DropdownMenu.RadioItem>) {
+  return <DropdownMenu.RadioItem {...rest} className={cx(styles.item, className)} />;
+}
+
+/** Marks the checked radio item (render inside MenuRadioItem). */
+export const MenuItemIndicator = DropdownMenu.ItemIndicator;
