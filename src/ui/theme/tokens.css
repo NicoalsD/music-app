@@ -1,0 +1,108 @@
+/* Design tokens for the "Japon antiguo" theme. Light mode only.
+   Components must read colors, fonts and motion exclusively from these variables. */
+:root {
+  color-scheme: light;
+
+  /* Paper and ink */
+  --paper: #f1eadb;
+  --paper-raised: #f8f4ea;
+  --paper-sunk: #e7dec9;
+  --ink: #1e1c22;
+  --ink-soft: #4e4a52;
+  --ink-faint: #6a655f;
+  --line: #cfc5b0;
+
+  /* Accents */
+  --ai: #22306a;
+  --ai-wash: #dce1ee;
+  --shu: #b4432e;
+  --jade: #6fa58c;
+  --sakura: #e9a9ab;
+  --ochre: #a87a24;
+  --sora: #a9c0da;
+  --plum: #4a2c33;
+
+  /* Derived helpers (flat colors only, no gradients) */
+  --on-ai: var(--paper-raised);
+  --on-shu: var(--paper-raised);
+  --on-plum: var(--paper);
+  --highlight: #ffffff;
+  --ink-12: color-mix(in oklab, var(--ink) 12%, transparent);
+  --ink-85: color-mix(in oklab, var(--ink) 85%, transparent);
+  --stack-shadow: color-mix(in oklab, var(--ink) 10%, transparent);
+
+  /* Typography */
+  --font-display: 'Shippori Mincho B1', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+  --font-ui: 'Zen Kaku Gothic New', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', system-ui, sans-serif;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 700;
+  --weight-display: 600;
+  --weight-display-heavy: 800;
+
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  --text-3xl: 44px;
+  --leading-body: 1.5;
+  --leading-display: 1.15;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Radii */
+  --radius-sm: 2px;
+  --radius-md: 6px;
+
+  /* Sizing */
+  --target-min: 44px;
+  --outline-width: 1.5px;
+  --focus-ring: 2px solid var(--ai);
+  --focus-offset: 2px;
+
+  /* Shoji glass */
+  --shoji-blur: 18px;
+  --shoji-blur-raised: 24px;
+  --shoji-opacity: 62%;
+  --shoji-opacity-raised: 74%;
+  --shoji-saturate: 1.15;
+  --shoji-grain-opacity: 0.1;
+  --shoji-highlight-top: color-mix(in oklab, var(--highlight) 55%, transparent);
+  --shoji-highlight-edge: color-mix(in oklab, var(--highlight) 18%, transparent);
+  --paper-stack-shadow: 4px 4px 0 var(--stack-shadow);
+  --kumiko-pitch: 64px;
+
+  /* Washi grain: tiny feTurbulence noise tinted with ink. */
+  --washi-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.11 0 0 0 0 0.13 0 0 0 1.2 -0.2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  --grain-opacity: 0.07;
+
+  /* Z-index scale */
+  --z-backdrop: -1;
+  --z-base: 0;
+  --z-sticky: 20;
+  --z-player: 30;
+  --z-overlay: 60;
+  --z-dialog: 70;
+  --z-menu: 80;
+  --z-toast: 90;
+  --z-tooltip: 100;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --duration-press: 140ms;
+  --duration-fast: 160ms;
+  --duration-base: 220ms;
+  --duration-slow: 400ms;
+  --duration-sun: 600ms;
+}
