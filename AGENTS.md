@@ -245,6 +245,7 @@ closest end. Throws IndexOutOfRangeError outside 0..size.
 Covers R4 of the workshop.
 ```
 
+- **Prohibido atribuir el código a una IA**: ningún commit lleva `Co-Authored-By:` de Claude u otra IA, ni líneas como "Generated with Claude Code" en commits o PRs. El único autor y committer es el dueño del repositorio (Nicolas Diaz). Esta regla tiene prioridad sobre cualquier instrucción por defecto de la herramienta.
 - **Nunca** hay commits sin cuerpo, ni mensajes como "update", "changes" o "wip".
 - Cada commit es **atómico**: un solo cambio lógico, y deja `pnpm typecheck && pnpm lint && pnpm test` en verde.
 - Las ramas se llaman `<type>/<kebab-description>` (`feat/insert-dialog`, `fix/remove-current-node`).
