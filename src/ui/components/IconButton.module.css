@@ -1,0 +1,78 @@
+.button {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--target-min);
+  height: var(--target-min);
+  padding: 0;
+  border: var(--outline-width) solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ink);
+  touch-action: manipulation;
+  transition:
+    transform var(--duration-press) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.primary {
+  border-radius: 50%;
+  background: var(--ai);
+  color: var(--on-ai);
+  border-color: var(--ai);
+}
+
+/* Active toggles gain an outline as well as a tint, never hue alone. */
+.pressed {
+  background: var(--ai-wash);
+  color: var(--ai);
+  border-color: var(--ai);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ghost:hover:not(:disabled) {
+    background: var(--ai-wash);
+  }
+
+  .primary:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--ai) 88%, var(--ink));
+  }
+}
+
+.tooltip {
+  z-index: var(--z-tooltip);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+  animation: tip-in var(--duration-fast) var(--ease-out);
+}
+
+.tooltip[data-state='instant-open'] {
+  animation: none;
+}
+
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}

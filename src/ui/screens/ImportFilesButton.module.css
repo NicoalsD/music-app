@@ -1,0 +1,37 @@
+.group {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.main {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.trigger {
+  height: auto;
+  min-height: var(--target-min);
+  border-color: var(--ink);
+  border-left-width: 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--paper-raised);
+  box-shadow:
+    0 1px 0 var(--line),
+    0 2px 0 var(--stack-shadow);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .trigger:hover:not(:disabled) {
+    background: var(--paper-sunk);
+  }
+}
+
+@media (max-width: 767px) {
+  .group {
+    display: flex;
+  }
+
+  .main {
+    flex: 1 1 auto;
+  }
+}

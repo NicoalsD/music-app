@@ -1,0 +1,83 @@
+/*
+ * Shoji panel: translucent rice-paper glass over the backdrop scene.
+ *
+ * - `.glass` holds every visual rule and is position-agnostic, so Radix content
+ *   (dialogs, menus) and sonner toasts can reuse it with their own positioning.
+ * - `.shoji` adds `position: relative` for ordinary in-flow panels.
+ * - `.raised` = menus and dialogs (more blur, more opacity: they sit closer).
+ * - `.flat` = for use INSIDE another shoji. NEVER nest blurred panels: a
+ *   backdrop-filter inside a backdrop-filter is expensive and looks muddy.
+ * - backdrop-filter is never animated.
+ */
+.glass {
+  --_opacity: var(--shoji-opacity);
+  --_blur: var(--shoji-blur);
+  isolation: isolate;
+  background: color-mix(in oklab, var(--paper-raised) var(--_opacity), transparent);
+  -webkit-backdrop-filter: blur(var(--_blur)) saturate(var(--shoji-saturate));
+  backdrop-filter: blur(var(--_blur)) saturate(var(--shoji-saturate));
+  border: var(--outline-width) solid var(--ink-85);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  box-shadow:
+    inset 0 1px 0 var(--shoji-highlight-top),
+    inset 0 0 0 1px var(--shoji-highlight-edge),
+    var(--paper-stack-shadow);
+}
+
+.shoji {
+  position: relative;
+}
+
+.raised {
+  --_opacity: var(--shoji-opacity-raised);
+  --_blur: var(--shoji-blur-raised);
+}
+
+/* Rice-paper grain over the glass. */
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: var(--washi-grain);
+  opacity: var(--shoji-grain-opacity);
+  mix-blend-mode: multiply;
+}
+
+/* Lattice lines (kumiko): thin wooden slats drawn as hard-stop hairlines. */
+.kumiko::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, var(--ink-12) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--ink-12) 1px, transparent 1px);
+  background-size: var(--kumiko-pitch) var(--kumiko-pitch);
+}
+
+/* Nested use: plain paper tint, no blur, no grain layer. */
+.flat {
+  background: color-mix(in oklab, var(--paper-raised) 86%, transparent);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: inset 0 1px 0 var(--shoji-highlight-top);
+}
+
+.flat::before {
+  content: none;
+}
+
+/* No backdrop-filter support: opaque paper. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .raised,
+  .flat {
+    background: var(--paper-raised);
+  }
+}

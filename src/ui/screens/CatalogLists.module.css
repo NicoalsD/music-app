@@ -1,0 +1,73 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gridItem,
+.rowItem {
+  display: flex;
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0 0 var(--space-2);
+  overflow-x: auto;
+  list-style: none;
+}
+
+.rowItem {
+  flex: none;
+  width: 96px;
+}
+
+.card {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: var(--space-1);
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  touch-action: manipulation;
+  transition: transform var(--duration-press) var(--ease-out);
+}
+
+.card:active {
+  transform: scale(0.98);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card:hover .cardTitle {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.cardTitle {
+  max-width: 100%;
+  overflow: hidden;
+  font-weight: var(--weight-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardMeta {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

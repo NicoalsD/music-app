@@ -1,0 +1,134 @@
+.scene {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-backdrop);
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--paper);
+}
+
+.sun {
+  position: absolute;
+  top: -4vmin;
+  right: -6vmin;
+  width: 38vmin;
+  height: 38vmin;
+  will-change: transform;
+}
+
+.sunDisc {
+  fill: var(--shu);
+  transition: fill var(--duration-sun) var(--ease-out);
+}
+
+.wires {
+  position: absolute;
+  top: 18vmin;
+  right: 0;
+  width: min(62vw, 90vmin);
+  height: auto;
+}
+
+.wire {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1;
+  opacity: 0.7;
+}
+
+.swallowA,
+.swallowB,
+.swallowC {
+  position: absolute;
+}
+
+.swallowA {
+  top: calc(18vmin + 4px);
+  right: 28vw;
+}
+
+.swallowB {
+  top: calc(18vmin + 24px);
+  right: 16vw;
+  transform: scaleX(-1);
+}
+
+.swallowC {
+  top: calc(18vmin + 40px);
+  right: 7vw;
+}
+
+.branch {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(58vmin, 520px);
+  height: auto;
+}
+
+.bough {
+  fill: none;
+  stroke: var(--plum);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.twig {
+  fill: none;
+  stroke: var(--plum);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+.petal {
+  fill: var(--sakura);
+  stroke: var(--ink);
+  stroke-width: 0.7;
+  stroke-linejoin: round;
+}
+
+.stamen {
+  fill: var(--ochre);
+}
+
+.wave {
+  position: absolute;
+  left: -2vmin;
+  bottom: -2vmin;
+  width: min(64vw, 72vmin);
+  aspect-ratio: 560 / 420;
+  will-change: transform;
+}
+
+.sea {
+  fill: var(--ai);
+  stroke: var(--ink);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.trough {
+  fill: var(--jade);
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.crestLine {
+  fill: none;
+  stroke: var(--sora);
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+
+.claw {
+  fill: var(--paper-raised);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.foam {
+  fill: var(--paper-raised);
+  stroke: var(--ink);
+  stroke-width: 1;
+}

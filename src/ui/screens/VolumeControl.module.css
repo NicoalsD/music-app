@@ -1,0 +1,45 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.slider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 110px;
+  height: var(--target-min);
+  touch-action: none;
+  user-select: none;
+}
+
+.track {
+  position: relative;
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--paper-sunk);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.range {
+  position: absolute;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ai);
+}
+
+.thumb {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border: var(--outline-width) solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper-raised);
+  transition: transform var(--duration-press) var(--ease-out);
+}
+
+.thumb:active {
+  transform: scale(0.92);
+}

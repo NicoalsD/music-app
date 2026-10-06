@@ -1,0 +1,48 @@
+.spinner {
+  display: inline-grid;
+  place-items: center;
+  color: var(--ink);
+}
+
+.spinner svg {
+  animation: spin 800ms linear infinite;
+}
+
+.stroke,
+.thin {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+}
+
+/* Thick brush body tapering into a thin tail. */
+.stroke {
+  stroke-width: 3;
+  stroke-dasharray: 34 23;
+}
+
+.thin {
+  stroke-width: 1;
+  stroke-dasharray: 10 47;
+  stroke-dashoffset: -34;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner svg {
+    animation: pulse 1.2s ease-in-out infinite !important;
+    animation-duration: 1.2s !important;
+    animation-iteration-count: infinite !important;
+  }
+}

@@ -1,0 +1,49 @@
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: min(360px, calc(100vw - 2 * var(--space-4)));
+  min-height: var(--target-min);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-weight: var(--weight-medium);
+}
+
+.description {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.action {
+  flex: none;
+  min-height: var(--target-min);
+  padding: 0 var(--space-3);
+  border: var(--outline-width) solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  touch-action: manipulation;
+}
+
+.action:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}

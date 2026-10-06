@@ -1,0 +1,22 @@
+.band {
+  display: block;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.wave circle {
+  stroke: var(--ink);
+  stroke-width: 0.6;
+}
+
+.jade {
+  fill: var(--jade);
+}
+
+.paper {
+  fill: var(--paper-raised);
+}
+
+.ai {
+  fill: var(--ai);
+}

@@ -131,7 +131,7 @@ En `src/core/__tests__/invariants.ts` va un helper que verifica las 6 invariante
 - Estados vacío, cargando y error que se ven en la lista y en la búsqueda.
 - La fila actual tiene `aria-current="true"`.
 
-## E2E (Playwright, con `e2e/fixtures/a.mp3`, `b.mp3` y `c.mp3`, que son tonos cortos de 2 a 3 s)
+## E2E (Playwright, con `e2e/fixtures/tone-a.wav`, `tone-b.wav` y `tone-c.wav`, que son tonos cortos de 2 a 3 s)
 
 1. Importar 3 archivos → aparecen en orden → play → suena el primero.
 2. Siguiente / anterior recorren a, b y c.
