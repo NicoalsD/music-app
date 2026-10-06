@@ -62,7 +62,41 @@ Reglas:
 | **Cables con golondrinas** | Barra de progreso | El progreso es un cable fino de tinta, y la "cabeza" (el thumb) es una pequeña golondrina índigo. Solo es decoración: el control real es un `<input type="range">` de Radix Slider. |
 | **Etiqueta de cerillas** | Chips de filtro y sección del artista | Bloques de color plano (`--plum`, `--sakura`) con tipografía display, sin sombras |
 
-Prohibido (son reglas del usuario y de los tropos de IA): degradados genéricos, emojis, tarjetas con un borde de color a la izquierda, *glassmorphism* y sombras difusas grandes. Si hace falta elevar algo, se usa una sombra de "papel apilado": `0 1px 0 var(--line), 0 2px 0 rgba(30,28,34,.06)`.
+
+## 3.1 Transparencia "Shōji" (*liquid glass* japonés)
+
+Lo pidió el usuario: un efecto de transparencia o *liquid glass* integrado al tema. La traducción es el **shōji**: paneles de papel de arroz translúcido que dejan pasar la luz y las formas de lo que hay detrás, desenfocadas. **Es el elemento memorable del diseño; el resto se mantiene sobrio.**
+
+**Escena de fondo** (`<BackdropScene/>`, fija y detrás de todo, `position: fixed; z-index: -1`):
+- Papel *washi* con grano, el **sol bermellón** grande (un círculo `--shu` de unos 38 vmin, arriba a la derecha), la **gran ola** índigo y jade abajo a la izquierda y una **rama de sakura** cruzando una esquina. Todo en SVG plano, sin degradados.
+- **Parallax** muy leve con `useScroll`: el sol baja 24 px y la ola sube 16 px a lo largo de todo el scroll. Con `prefers-reduced-motion` queda estático.
+- Opcional: el color del sol toma el tono dominante de la carátula actual (se extrae del canvas), con una transición de 600 ms.
+
+**Panel shōji** (`.shoji`, para los paneles de Buscar y Mi lista, el reproductor, los menús, los diálogos y los toasts):
+```css
+.shoji {
+  background: color-mix(in oklab, var(--paper-raised) 62%, transparent);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  border: 1.5px solid color-mix(in oklab, var(--ink) 85%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),      /* reflejo superior: el "liquid" */
+    inset 0 0 0 1px rgba(255,255,255,.18),
+    4px 4px 0 rgba(30,28,34,.10);               /* sombra de papel apilado */
+  border-radius: 6px;
+}
+.shoji::before { /* grano de papel de arroz sobre el vidrio */
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background-image: var(--washi-grain); opacity: .10; mix-blend-mode: multiply;
+}
+```
+- **Kumiko** (la celosía del shōji): en la barra del reproductor y en la cabecera, unas líneas finas de la retícula (1 px, `--ink` al 12 %) cada 64 px, como los listones de madera.
+- **Variación por profundidad**: los paneles principales usan un blur de 18 px y una opacidad del 62 %; los menús y diálogos, 24 px y 74 %, para leerse mejor porque están "más cerca".
+- **Respaldo**: si no hay soporte para `backdrop-filter` (`@supports not (backdrop-filter: blur(1px))`), el panel queda opaco con `--paper-raised`.
+- **Contraste**: el texto sobre el shōji debe mantener ≥ 4.5:1 en el peor caso, que es encima del sol bermellón. Por eso la opacidad mínima del panel es del 62 % y el texto secundario usa `--ink-soft`, no `--ink-faint`.
+- **Rendimiento**: no se anidan paneles shōji (el blur dentro de un blur es caro) y no se anima `backdrop-filter`.
+
+Prohibido (son reglas del usuario y de los tropos de IA): degradados genéricos, emojis, tarjetas con un borde de color a la izquierda, sombras difusas grandes, etiquetas en MAYÚSCULAS con tracking, fuentes monoespaciadas para datos pequeños y la flecha '→' añadida a botones o enlaces. Si hace falta elevar algo, se usa una sombra de "papel apilado": `0 1px 0 var(--line), 0 2px 0 rgba(30,28,34,.06)`.
 
 ## 4. Carátulas (obligatorias)
 

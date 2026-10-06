@@ -34,6 +34,7 @@ Hay que construir una app en **TypeScript** que simule una lista de reproducció
 | R6 | **Adelantar** canción (siguiente) | `Playlist.next` (`current = current.next`) |
 | R7 | **Retroceder** canción (anterior) | `Playlist.previous` (`current = current.prev`) |
 | R8 | Otras funcionalidades pertinentes | Ver la sección 7 |
+| R9 | **Crear playlists** (varias: crear, renombrar, eliminar, cambiar de playlist activa) | `PlaylistLibrary` (una `DoublyLinkedList<Playlist>`) |
 
 ### Restricciones del usuario
 - El diseño es **primero en modo claro**. El modo claro es el que se usa por defecto, y el modo oscuro es opcional y va después.
@@ -94,6 +95,7 @@ src/
 │   ├── DoublyLinkedList.ts
 │   ├── Song.ts
 │   ├── Playlist.ts
+│   ├── PlaylistLibrary.ts
 │   └── errors.ts
 ├── player/      # Reproducción
 │   ├── AudioOutput.ts        # interfaz
@@ -121,6 +123,7 @@ Hay más detalle (diagramas de clases y de secuencia) en `.agents/architecture.m
   - API: `insertFirst`, `insertLast`, `insertAt(index)`, `removeFirst`, `removeLast`, `removeAt(index)`, `removeById(id)`, `move(from, to)`, `find`, `nodeAt`, `isEmpty`, `size`, `[Symbol.iterator]`, `toArray`.
   - `nodeAt(i)` recorre desde `head` si `i < size/2` y desde `tail` en caso contrario.
 - **`Playlist`**: contiene una `DoublyLinkedList<Song>` y el puntero **`current: Node<Song> | null`**. Siguiente y anterior se mueven por `next` y `prev` en O(1).
+- **`PlaylistLibrary`**: es la colección de playlists del usuario, guardada también como una **`DoublyLinkedList<Playlist>`**. Permite `create(name)`, `rename(id, name)`, `remove(id)` (no se puede eliminar la única playlist), `get(id)`, `setActive(id)` y `move`. Cada `Playlist` tiene `id`, `name`, `createdAt` y su propia lista doble de canciones con su `current`. **Solo la playlist activa se reproduce**; al cambiar de playlist se detiene la reproducción de la anterior. Al iniciar por primera vez se crea "Mi lista".
 - **`PlayerEngine`**: play, pausa, seek, volumen, repeat (`off | all | one`), shuffle y la regla de 3 s. Solo depende de la interfaz `AudioOutput` y elige `SpotifyOutput` o `Html5AudioOutput` según `song.source`. Al cambiar de output, **pausa el anterior**.
 - **`PlayerStore`**: es el único punto por el que la UI modifica el estado. Expone acciones (`addFirst`, `addAt`, `remove`, `next`, `togglePlay`…) y snapshots inmutables.
 - **UI**: no contiene lógica de negocio. Nunca accede a los nodos (`Node`) ni muta la lista directamente.
