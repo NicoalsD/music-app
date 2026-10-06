@@ -19,7 +19,11 @@ class FakeSession implements MediaSessionLike {
   }
 }
 
-function setup(): { session: FakeSession; adapter: BrowserMediaSession; made: MediaMetadataInit[] } {
+function setup(): {
+  session: FakeSession;
+  adapter: BrowserMediaSession;
+  made: MediaMetadataInit[];
+} {
   const session = new FakeSession();
   const made: MediaMetadataInit[] = [];
   const adapter = new BrowserMediaSession(session, (init) => {
@@ -87,7 +91,13 @@ describe('BrowserMediaSession', () => {
 
   it('registers action handlers and converts seekto to milliseconds', () => {
     const { session, adapter } = setup();
-    const handlers = { play: vi.fn(), pause: vi.fn(), previoustrack: vi.fn(), nexttrack: vi.fn(), seekto: vi.fn() };
+    const handlers = {
+      play: vi.fn(),
+      pause: vi.fn(),
+      previoustrack: vi.fn(),
+      nexttrack: vi.fn(),
+      seekto: vi.fn(),
+    };
     adapter.setActionHandlers(handlers);
     session.handlers.get('play')?.({});
     session.handlers.get('pause')?.({});
@@ -95,7 +105,12 @@ describe('BrowserMediaSession', () => {
     session.handlers.get('nexttrack')?.({});
     session.handlers.get('seekto')?.({ seekTime: 12.5 });
     session.handlers.get('seekto')?.({});
-    for (const handler of [handlers.play, handlers.pause, handlers.previoustrack, handlers.nexttrack]) {
+    for (const handler of [
+      handlers.play,
+      handlers.pause,
+      handlers.previoustrack,
+      handlers.nexttrack,
+    ]) {
       expect(handler).toHaveBeenCalledTimes(1);
     }
     expect(handlers.seekto).toHaveBeenCalledTimes(1);

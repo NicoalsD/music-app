@@ -35,9 +35,9 @@ describe('Playlist', () => {
       p.rename('  New  ');
       expect(p.name).toBe('New');
       expect(() => p.rename('   ')).toThrow(InvalidOperationError);
-      expect(() => new Playlist({ id: 'x', name: '', createdAt: 0, ids: new CounterIds() })).toThrow(
-        InvalidOperationError,
-      );
+      expect(
+        () => new Playlist({ id: 'x', name: '', createdAt: 0, ids: new CounterIds() }),
+      ).toThrow(InvalidOperationError);
     });
 
     it('sums total duration', () => {
@@ -56,12 +56,15 @@ describe('Playlist', () => {
   });
 
   describe('adding', () => {
-    it.each(['addFirst', 'addLast'] as const)('%s on an empty playlist makes the song current', (method) => {
-      const p = makePlaylist();
-      const song = p[method](makeTrack('a'));
-      expect(p.current).toBe(song);
-      expect(p.currentIndex).toBe(0);
-    });
+    it.each(['addFirst', 'addLast'] as const)(
+      '%s on an empty playlist makes the song current',
+      (method) => {
+        const p = makePlaylist();
+        const song = p[method](makeTrack('a'));
+        expect(p.current).toBe(song);
+        expect(p.currentIndex).toBe(0);
+      },
+    );
 
     it('addAt on an empty playlist makes the song current', () => {
       const p = makePlaylist();

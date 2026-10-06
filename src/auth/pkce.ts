@@ -1,13 +1,17 @@
 /** Source of cryptographically secure random bytes (injectable for tests). */
 export type RandomBytes = (length: number) => Uint8Array;
 
-export const cryptoRandomBytes: RandomBytes = (length) => crypto.getRandomValues(new Uint8Array(length));
+export const cryptoRandomBytes: RandomBytes = (length) =>
+  crypto.getRandomValues(new Uint8Array(length));
 
 // 64 symbols, so `byte & 63` is unbiased. All are valid PKCE "unreserved" characters.
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 
 /** Generates a random URL-safe string (used for the PKCE verifier and the OAuth state). */
-export function generateRandomString(randomBytes: RandomBytes = cryptoRandomBytes, length = 64): string {
+export function generateRandomString(
+  randomBytes: RandomBytes = cryptoRandomBytes,
+  length = 64,
+): string {
   const bytes = randomBytes(length);
   let result = '';
   for (let i = 0; i < length; i += 1) {
@@ -17,7 +21,10 @@ export function generateRandomString(randomBytes: RandomBytes = cryptoRandomByte
 }
 
 /** PKCE code verifier: 43 to 128 characters (RFC 7636). */
-export function generateCodeVerifier(randomBytes: RandomBytes = cryptoRandomBytes, length = 64): string {
+export function generateCodeVerifier(
+  randomBytes: RandomBytes = cryptoRandomBytes,
+  length = 64,
+): string {
   return generateRandomString(randomBytes, Math.min(128, Math.max(43, length)));
 }
 

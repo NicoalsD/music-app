@@ -85,7 +85,11 @@ describe('DoublyLinkedList', () => {
 
     it('inserts around the midpoint where traversal direction changes', () => {
       for (const size of [4, 5, 6, 7]) {
-        for (const i of [Math.floor(size / 2) - 1, Math.floor(size / 2), Math.floor(size / 2) + 1]) {
+        for (const i of [
+          Math.floor(size / 2) - 1,
+          Math.floor(size / 2),
+          Math.floor(size / 2) + 1,
+        ]) {
           const list = build(size);
           list.insertAt(i, -1);
           assertInvariants(list);
@@ -331,9 +335,17 @@ describe('DoublyLinkedList', () => {
     const opArb: fc.Arbitrary<Op> = fc.oneof(
       fc.record({ kind: fc.constant('first' as const), v: fc.integer() }),
       fc.record({ kind: fc.constant('last' as const), v: fc.integer() }),
-      fc.record({ kind: fc.constant('insertAt' as const), i: fc.integer({ min: -2, max: 40 }), v: fc.integer() }),
+      fc.record({
+        kind: fc.constant('insertAt' as const),
+        i: fc.integer({ min: -2, max: 40 }),
+        v: fc.integer(),
+      }),
       fc.record({ kind: fc.constant('removeAt' as const), i: fc.integer({ min: -2, max: 40 }) }),
-      fc.record({ kind: fc.constant('move' as const), a: fc.integer({ min: -2, max: 40 }), b: fc.integer({ min: -2, max: 40 }) }),
+      fc.record({
+        kind: fc.constant('move' as const),
+        a: fc.integer({ min: -2, max: 40 }),
+        b: fc.integer({ min: -2, max: 40 }),
+      }),
     );
 
     it('keeps the list equal to the model and invariants valid', () => {

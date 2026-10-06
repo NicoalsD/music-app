@@ -79,7 +79,9 @@ export class BrowserTokenStore implements TokenStore {
       const raw = this.#storage?.getItem(TOKEN_STORAGE_KEY) ?? null;
       if (raw === null) return null;
       const parsed: unknown = JSON.parse(raw);
-      return isPersisted(parsed) ? { refreshToken: parsed.refreshToken, expiresAt: parsed.expiresAt } : null;
+      return isPersisted(parsed)
+        ? { refreshToken: parsed.refreshToken, expiresAt: parsed.expiresAt }
+        : null;
     } catch {
       return null;
     }

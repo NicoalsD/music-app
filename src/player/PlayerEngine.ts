@@ -104,7 +104,9 @@ export class PlayerEngine {
     this.#progress = { positionMs: 0, durationMs: this.#state.durationMs };
     if (this.#state.shuffle) this.#rebuildShuffle();
     for (const output of Object.values(this.#outputs)) {
-      this.#unsubscribeOutputs.push(output.subscribe((event) => this.#onOutputEvent(output, event)));
+      this.#unsubscribeOutputs.push(
+        output.subscribe((event) => this.#onOutputEvent(output, event)),
+      );
     }
     this.#media?.setActionHandlers({
       play: () => void this.play(),
@@ -210,7 +212,10 @@ export class PlayerEngine {
     if (this.#disposed || output === null || this.#loadedEntryId === null) return;
     if (!Number.isFinite(positionMs)) return;
     const duration = this.#progress.durationMs;
-    const clamped = Math.min(Math.max(positionMs, 0), duration > 0 ? duration : Number.POSITIVE_INFINITY);
+    const clamped = Math.min(
+      Math.max(positionMs, 0),
+      duration > 0 ? duration : Number.POSITIVE_INFINITY,
+    );
     await output.seek(clamped);
     this.#publishProgress(clamped, duration);
     this.#setState({ positionMs: clamped });
@@ -280,7 +285,11 @@ export class PlayerEngine {
     }
     this.#loadedEntryId = null;
     this.#publishProgress(0, current.durationMs);
-    this.#setState({ currentEntryId: current.entryId, positionMs: 0, durationMs: current.durationMs });
+    this.#setState({
+      currentEntryId: current.entryId,
+      positionMs: 0,
+      durationMs: current.durationMs,
+    });
     this.#media?.setMetadata(current);
   }
 
@@ -350,7 +359,8 @@ export class PlayerEngine {
     }
     try {
       const output = this.#outputs[song.source];
-      if (output === undefined) throw new PlaybackError(`No audio output for source "${song.source}"`);
+      if (output === undefined)
+        throw new PlaybackError(`No audio output for source "${song.source}"`);
       const previous = this.#active;
       if (previous !== null && previous !== output) {
         await this.#pauseOutput(previous);
@@ -422,7 +432,13 @@ export class PlayerEngine {
     this.#pending = false;
     this.#loadedEntryId = null;
     this.#publishProgress(0, 0);
-    this.#setState({ status: 'idle', currentEntryId: null, positionMs: 0, durationMs: 0, error: null });
+    this.#setState({
+      status: 'idle',
+      currentEntryId: null,
+      positionMs: 0,
+      durationMs: 0,
+      error: null,
+    });
     this.#media?.setMetadata(null);
     this.#media?.setPlaybackState('none');
     await this.#pauseOutput(this.#active);
@@ -465,7 +481,11 @@ export class PlayerEngine {
     const playlist = this.#library.active;
     const ids = playlist.songs().map((song) => song.entryId);
     const current = playlist.current;
-    this.#shuffleOrder = new ShuffleOrder(ids, current === null ? null : current.entryId, this.#random);
+    this.#shuffleOrder = new ShuffleOrder(
+      ids,
+      current === null ? null : current.entryId,
+      this.#random,
+    );
   }
 
   /** Keeps the shuffle permutation aligned with songs added or removed. */
@@ -493,7 +513,10 @@ export class PlayerEngine {
     switch (event.type) {
       case 'progress':
         if (this.#pending) return;
-        this.#publishProgress(event.positionMs, event.durationMs > 0 ? event.durationMs : this.#progress.durationMs);
+        this.#publishProgress(
+          event.positionMs,
+          event.durationMs > 0 ? event.durationMs : this.#progress.durationMs,
+        );
         this.#updateMediaPosition(false);
         return;
       case 'playing':
@@ -508,11 +531,16 @@ export class PlayerEngine {
         this.#setState({ status: 'paused', positionMs: this.#progress.positionMs });
         return;
       case 'error':
-        if (status === 'playing' || status === 'loading') void this.#onFailure(event.error, this.#token);
+        if (status === 'playing' || status === 'loading')
+          void this.#onFailure(event.error, this.#token);
         return;
       case 'ended':
         if (this.#pending) return;
-        if (status === 'playing' || status === 'loading' || (status === 'paused' && this.#pausedByOutput)) {
+        if (
+          status === 'playing' ||
+          status === 'loading' ||
+          (status === 'paused' && this.#pausedByOutput)
+        ) {
           void this.#onEnded();
         }
         return;
@@ -533,7 +561,8 @@ export class PlayerEngine {
   }
 
   #publishProgress(positionMs: number, durationMs: number): void {
-    if (positionMs === this.#progress.positionMs && durationMs === this.#progress.durationMs) return;
+    if (positionMs === this.#progress.positionMs && durationMs === this.#progress.durationMs)
+      return;
     this.#progress = { positionMs, durationMs };
     for (const listener of [...this.#progressListeners]) listener(this.#progress);
   }
@@ -548,11 +577,14 @@ export class PlayerEngine {
 
   #setState(patch: Partial<PlayerState>): void {
     const next: PlayerState = { ...this.#state, ...patch };
-    const changed = (Object.keys(next) as (keyof PlayerState)[]).some((key) => next[key] !== this.#state[key]);
+    const changed = (Object.keys(next) as (keyof PlayerState)[]).some(
+      (key) => next[key] !== this.#state[key],
+    );
     if (!changed) return;
     const previousStatus = this.#state.status;
     this.#state = next;
-    if (next.status !== previousStatus) this.#media?.setPlaybackState(this.#mediaState(next.status));
+    if (next.status !== previousStatus)
+      this.#media?.setPlaybackState(this.#mediaState(next.status));
     for (const listener of [...this.#listeners]) listener(next);
   }
 

@@ -11,6 +11,9 @@ export async function parseMetadata(file: File): Promise<LocalMetadata> {
     artists,
     album: common.album ?? null,
     durationMs: format.duration === undefined ? null : Math.round(format.duration * 1000),
-    picture: picture === undefined ? null : { data: new Uint8Array(picture.data), mimeType: picture.format },
+    picture:
+      picture === undefined
+        ? null
+        : { data: new Uint8Array(picture.data), mimeType: picture.format },
   };
 }

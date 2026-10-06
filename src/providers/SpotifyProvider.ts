@@ -69,8 +69,10 @@ function parseAlbumPayload(value: Body): AlbumPayload | null {
 }
 
 // Guards validate the raw body; the provider then parses it again into typed values.
-const isSearchBody = (value: unknown): value is Body => isRecord(value) && parseSearch(value) !== null;
-const isAlbumBody = (value: unknown): value is Body => isRecord(value) && parseAlbumPayload(value) !== null;
+const isSearchBody = (value: unknown): value is Body =>
+  isRecord(value) && parseSearch(value) !== null;
+const isAlbumBody = (value: unknown): value is Body =>
+  isRecord(value) && parseAlbumPayload(value) !== null;
 const isArtistBody = (value: unknown): value is Body => parseArtist(value) !== null;
 function pageGuard<T>(parseItem: (item: unknown) => T | null): (value: unknown) => value is Body {
   return (value): value is Body => isRecord(value) && parsePage(value, parseItem) !== null;
@@ -87,7 +89,8 @@ export class SpotifyProvider implements MusicProvider {
   async search(query: SearchQuery, signal?: AbortSignal): Promise<SearchResults> {
     const text = query.text.trim();
     const types = TYPE_ORDER.filter((type) => query.types.includes(type));
-    if (text === '' || types.length === 0) return { tracks: [], artists: [], albums: [], hasMore: false };
+    if (text === '' || types.length === 0)
+      return { tracks: [], artists: [], albums: [], hasMore: false };
     if (!Number.isInteger(query.page) || query.page < 0) {
       throw new InvalidOperationError(`Invalid search page ${query.page}`);
     }
@@ -143,7 +146,8 @@ export class SpotifyProvider implements MusicProvider {
     ]);
     const artist = parseArtist(artistBody);
     const albums = parsePage(albumsBody, parseAlbum);
-    if (artist === null || albums === null) throw new SpotifyResponseError('Unexpected artist payload');
+    if (artist === null || albums === null)
+      throw new SpotifyResponseError('Unexpected artist payload');
     return { ...mapArtistSummary(artist), albums: albums.items.map(mapAlbumSummary) };
   }
 
@@ -153,7 +157,11 @@ export class SpotifyProvider implements MusicProvider {
     return page;
   }
 
-  #get<T>(path: string, guard: (value: unknown) => value is T, signal: AbortSignal | undefined): Promise<T> {
+  #get<T>(
+    path: string,
+    guard: (value: unknown) => value is T,
+    signal: AbortSignal | undefined,
+  ): Promise<T> {
     return this.#client.request(path, { guard, signal });
   }
 }

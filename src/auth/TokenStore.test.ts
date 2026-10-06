@@ -39,7 +39,11 @@ describe('BrowserTokenStore', () => {
   it('restores a session without access token after a reload', () => {
     const storage = new MemoryStorage();
     new BrowserTokenStore(storage).save(tokens);
-    expect(new BrowserTokenStore(storage).read()).toEqual({ accessToken: null, refreshToken: 'r', expiresAt: 1000 });
+    expect(new BrowserTokenStore(storage).read()).toEqual({
+      accessToken: null,
+      refreshToken: 'r',
+      expiresAt: 1000,
+    });
   });
 
   it('returns null when nothing is stored', () => {

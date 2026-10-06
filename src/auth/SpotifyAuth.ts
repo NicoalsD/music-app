@@ -1,6 +1,11 @@
 import { AuthError } from '../core/errors';
 import type { Clock } from '../core/ports';
-import { codeChallengeS256, cryptoRandomBytes, generateCodeVerifier, generateRandomString } from './pkce';
+import {
+  codeChallengeS256,
+  cryptoRandomBytes,
+  generateCodeVerifier,
+  generateRandomString,
+} from './pkce';
 import type { RandomBytes } from './pkce';
 import type { StorageLike, TokenStore } from './TokenStore';
 
@@ -130,7 +135,8 @@ export class SpotifyAuth {
       throw new AuthError('OAuth state mismatch, the login response was rejected');
     }
     if (error !== null) throw new AuthError(`Spotify authorization failed: ${error}`);
-    if (code === null || verifier === null) throw new AuthError('Missing authorization code or code verifier');
+    if (code === null || verifier === null)
+      throw new AuthError('Missing authorization code or code verifier');
 
     const response = await this.#postToken({
       grant_type: 'authorization_code',
@@ -154,7 +160,10 @@ export class SpotifyAuth {
   async getAccessToken(): Promise<string | null> {
     const tokens = this.#deps.tokenStore.read();
     if (tokens === null) return null;
-    if (tokens.accessToken !== null && tokens.expiresAt - this.#deps.clock.now() > REFRESH_MARGIN_MS) {
+    if (
+      tokens.accessToken !== null &&
+      tokens.expiresAt - this.#deps.clock.now() > REFRESH_MARGIN_MS
+    ) {
       return tokens.accessToken;
     }
     return this.#refresh();
@@ -238,13 +247,15 @@ export class SpotifyAuth {
     } catch {
       throw new AuthError('Token endpoint returned invalid JSON');
     }
-    if (!isTokenResponse(body)) throw new AuthError('Token endpoint returned an unexpected payload');
+    if (!isTokenResponse(body))
+      throw new AuthError('Token endpoint returned an unexpected payload');
     return body;
   }
 
   #cleanUrl(url: URL): void {
     const cleaned = new URL(url.href);
-    for (const key of ['code', 'state', 'error', 'error_description']) cleaned.searchParams.delete(key);
+    for (const key of ['code', 'state', 'error', 'error_description'])
+      cleaned.searchParams.delete(key);
     this.#deps.replaceUrl(cleaned.href);
   }
 

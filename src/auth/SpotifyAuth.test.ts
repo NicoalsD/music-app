@@ -44,7 +44,9 @@ interface Harness {
   states: AuthState[];
 }
 
-function setup(options: { url?: string; responders?: ConstructorParameters<typeof FakeFetch> } = {}): Harness {
+function setup(
+  options: { url?: string; responders?: ConstructorParameters<typeof FakeFetch> } = {},
+): Harness {
   const http = new FakeFetch(...(options.responders ?? []));
   const session = new MemoryStorage();
   const local = new MemoryStorage();
@@ -154,7 +156,10 @@ describe('SpotifyAuth.handleRedirect', () => {
   });
 
   it('exchanges the code with the exact form body and cleans the url', async () => {
-    const h = setup({ url: `${REDIRECT}?code=the-code&state=s1&keep=1`, responders: [jsonResponse(tokenBody())] });
+    const h = setup({
+      url: `${REDIRECT}?code=the-code&state=s1&keep=1`,
+      responders: [jsonResponse(tokenBody())],
+    });
     h.session.setItem(STATE_STORAGE_KEY, 's1');
     h.session.setItem(VERIFIER_STORAGE_KEY, 'the-verifier');
 
@@ -270,7 +275,10 @@ describe('SpotifyAuth.getAccessToken', () => {
 
   it('refreshes proactively when less than 60s remain', async () => {
     const h = await loggedIn({
-      responders: [jsonResponse(tokenBody()), jsonResponse({ access_token: 'access-2', expires_in: 3600 })],
+      responders: [
+        jsonResponse(tokenBody()),
+        jsonResponse({ access_token: 'access-2', expires_in: 3600 }),
+      ],
     });
     h.time.now += 3600_000 - 59_000;
     await expect(h.auth.getAccessToken()).resolves.toBe('access-2');
@@ -313,14 +321,20 @@ describe('SpotifyAuth.getAccessToken', () => {
       ],
     });
     h.time.now += 3600_000;
-    const all = Promise.all([h.auth.getAccessToken(), h.auth.getAccessToken(), h.auth.forceRefresh()]);
+    const all = Promise.all([
+      h.auth.getAccessToken(),
+      h.auth.getAccessToken(),
+      h.auth.forceRefresh(),
+    ]);
     release();
     await expect(all).resolves.toEqual(['access-2', 'access-2', 'access-2']);
     expect(h.http.calls).toHaveLength(2);
   });
 
   it('logs out when the refresh token is rejected', async () => {
-    const h = await loggedIn({ responders: [jsonResponse(tokenBody()), jsonResponse({ error: 'invalid_grant' }, 400)] });
+    const h = await loggedIn({
+      responders: [jsonResponse(tokenBody()), jsonResponse({ error: 'invalid_grant' }, 400)],
+    });
     await expect(h.auth.forceRefresh()).resolves.toBeNull();
     expect(h.auth.isLoggedIn).toBe(false);
     expect(h.local.data.size).toBe(0);
@@ -328,7 +342,9 @@ describe('SpotifyAuth.getAccessToken', () => {
   });
 
   it('logs out when the refresh payload is malformed', async () => {
-    const h = await loggedIn({ responders: [jsonResponse(tokenBody()), jsonResponse({ nope: true })] });
+    const h = await loggedIn({
+      responders: [jsonResponse(tokenBody()), jsonResponse({ nope: true })],
+    });
     await expect(h.auth.forceRefresh()).resolves.toBeNull();
     expect(h.auth.isLoggedIn).toBe(false);
   });
@@ -343,7 +359,9 @@ describe('SpotifyAuth.getAccessToken', () => {
   });
 
   it('logs out when the stored session has no refresh token', async () => {
-    const h = await loggedIn({ responders: [jsonResponse(tokenBody({ refresh_token: undefined }))] });
+    const h = await loggedIn({
+      responders: [jsonResponse(tokenBody({ refresh_token: undefined }))],
+    });
     await expect(h.auth.forceRefresh()).resolves.toBeNull();
     expect(h.auth.isLoggedIn).toBe(false);
   });

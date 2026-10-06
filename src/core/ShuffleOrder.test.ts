@@ -38,7 +38,10 @@ describe('ShuffleOrder', () => {
   });
 
   it('collapses duplicate input ids', () => {
-    expect(sorted(new ShuffleOrder(['a', 'a', 'b'], null, new SeededRandom(1)).ids())).toEqual(['a', 'b']);
+    expect(sorted(new ShuffleOrder(['a', 'a', 'b'], null, new SeededRandom(1)).ids())).toEqual([
+      'a',
+      'b',
+    ]);
   });
 
   it('handles 0 and 1 elements', () => {
@@ -107,7 +110,10 @@ describe('ShuffleOrder', () => {
     fc.assert(
       fc.property(
         fc.integer({ min: 1, max: 1_000_000 }),
-        fc.array(fc.tuple(fc.constantFrom('add', 'remove', 'next'), fc.integer({ min: 0, max: 9 })), { maxLength: 40 }),
+        fc.array(
+          fc.tuple(fc.constantFrom('add', 'remove', 'next'), fc.integer({ min: 0, max: 9 })),
+          { maxLength: 40 },
+        ),
         (seed, ops) => {
           const s = new ShuffleOrder(['0', '1', '2', '3', '4'], '2', new SeededRandom(seed));
           const model = new Set(s.ids());

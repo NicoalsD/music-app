@@ -3,11 +3,16 @@ export interface RecordedCall {
   readonly init: RequestInit;
 }
 
-export function jsonResponse(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
+export function jsonResponse(
+  body: unknown,
+  status = 200,
+  headers: Record<string, string> = {},
+): Response {
   return new Response(JSON.stringify(body), { status, headers });
 }
 
-export type Responder = Response | Error | DOMException | ((call: RecordedCall) => Response | Promise<Response>);
+export type Responder =
+  Response | Error | DOMException | ((call: RecordedCall) => Response | Promise<Response>);
 
 /** Scripted fetch: answers with queued responders in order and records every call. */
 export class FakeFetch {

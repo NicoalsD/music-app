@@ -66,7 +66,10 @@ function normalizeImages(value: UnknownRecord): readonly RawImage[] | null {
   const images = value['images'];
   if (images === undefined) return [];
   if (!isImageList(images)) return null;
-  return images.map((image) => ({ url: image.url, width: typeof image.width === 'number' ? image.width : null }));
+  return images.map((image) => ({
+    url: image.url,
+    width: typeof image.width === 'number' ? image.width : null,
+  }));
 }
 
 /** Parses a track object; returns null when malformed. */
@@ -86,7 +89,16 @@ export function parseTrack(value: unknown): RawTrack | null {
   }
   const urls = value['external_urls'];
   const spotifyUrl = isRecord(urls) && isString(urls['spotify']) ? urls['spotify'] : null;
-  return { id, uri, name, duration_ms: duration, explicit: explicit ?? false, artists, album, spotifyUrl };
+  return {
+    id,
+    uri,
+    name,
+    duration_ms: duration,
+    explicit: explicit ?? false,
+    artists,
+    album,
+    spotifyUrl,
+  };
 }
 
 export function parseAlbumRef(value: unknown): RawAlbumRef | null {
@@ -120,7 +132,10 @@ export function parseArtist(value: unknown): RawArtist | null {
 }
 
 /** Parses a paging object. Null items (Spotify sometimes sends them) are dropped. */
-export function parsePage<T>(value: unknown, parseItem: (item: unknown) => T | null): RawPage<T> | null {
+export function parsePage<T>(
+  value: unknown,
+  parseItem: (item: unknown) => T | null,
+): RawPage<T> | null {
   if (!isRecord(value) || !Array.isArray(value['items'])) return null;
   const next = value['next'];
   if (next !== null && !isString(next)) return null;
@@ -155,7 +170,11 @@ export function pickArtwork(images: readonly RawImage[]): Artwork {
   const first = images[0];
   if (first === undefined) return {};
   const pick = (target: number): string => (closest(images, target) ?? first).url;
-  return { small: pick(TARGET_WIDTHS.small), medium: pick(TARGET_WIDTHS.medium), large: pick(TARGET_WIDTHS.large) };
+  return {
+    small: pick(TARGET_WIDTHS.small),
+    medium: pick(TARGET_WIDTHS.medium),
+    large: pick(TARGET_WIDTHS.large),
+  };
 }
 
 export function mapTrack(raw: RawTrack, fallbackAlbum: RawAlbumRef | null): Track {

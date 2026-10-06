@@ -18,7 +18,9 @@ export class SpotifyApiError extends DomainError {
 
 /** 403: the user is not on the app allowlist, or the account is not Premium. */
 export class SpotifyForbiddenError extends SpotifyApiError {
-  constructor(message = 'Spotify refused the request (403): user not on the allowlist or not Premium') {
+  constructor(
+    message = 'Spotify refused the request (403): user not on the allowlist or not Premium',
+  ) {
     super(403, message);
   }
 }
@@ -71,7 +73,9 @@ export const abortableSleep: Sleep = (ms, signal) =>
   });
 
 function isAbort(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError';
+  return (
+    typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
+  );
 }
 
 function retryAfterMs(response: Response): number {

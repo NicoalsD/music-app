@@ -8,7 +8,8 @@ export interface AccessTokenSource {
   getAccessToken(): Promise<string | null>;
 }
 
-export type SpotifyStatus = 'disconnected' | 'connecting' | 'ready' | 'no-premium' | 'unsupported' | 'error';
+export type SpotifyStatus =
+  'disconnected' | 'connecting' | 'ready' | 'no-premium' | 'unsupported' | 'error';
 export type SpotifyStatusListener = (status: SpotifyStatus) => void;
 
 /** Structural subset of Spotify.Track used for end detection. */
@@ -35,10 +36,7 @@ export interface SpotifyPlayerInit {
 }
 
 export type SpotifyErrorEvent =
-  | 'initialization_error'
-  | 'authentication_error'
-  | 'account_error'
-  | 'playback_error';
+  'initialization_error' | 'authentication_error' | 'account_error' | 'playback_error';
 export type SpotifyEventName = 'ready' | 'not_ready' | 'player_state_changed' | SpotifyErrorEvent;
 export type SpotifyDeviceListener = (instance: { device_id: string }) => void;
 export type SpotifyStateListener = (state: SpotifyStateLike | null) => void;
@@ -51,7 +49,10 @@ export interface SpotifyPlayerLike {
   addListener(event: 'ready' | 'not_ready', cb: SpotifyDeviceListener): void;
   addListener(event: 'player_state_changed', cb: SpotifyStateListener): void;
   addListener(event: SpotifyErrorEvent, cb: SpotifyErrorListener): void;
-  removeListener(event: SpotifyEventName, cb?: SpotifyDeviceListener | SpotifyStateListener | SpotifyErrorListener): void;
+  removeListener(
+    event: SpotifyEventName,
+    cb?: SpotifyDeviceListener | SpotifyStateListener | SpotifyErrorListener,
+  ): void;
   getCurrentState(): Promise<SpotifyStateLike | null>;
   pause(): Promise<void>;
   resume(): Promise<void>;
@@ -109,7 +110,10 @@ export class SpotifyOutput implements AudioOutput {
   readonly #listeners = new Set<AudioOutputListener>();
   readonly #statusListeners = new Set<SpotifyStatusListener>();
   readonly #waiters: Waiter[] = [];
-  readonly #registered: [SpotifyEventName, SpotifyDeviceListener | SpotifyStateListener | SpotifyErrorListener][] = [];
+  readonly #registered: [
+    SpotifyEventName,
+    SpotifyDeviceListener | SpotifyStateListener | SpotifyErrorListener,
+  ][] = [];
   #status: SpotifyStatus = 'disconnected';
   #player: SpotifyPlayerLike | null = null;
   #initPromise: Promise<void> | null = null;
@@ -289,7 +293,8 @@ export class SpotifyOutput implements AudioOutput {
   #teardownPlayer(): void {
     const player = this.#player;
     if (player === null) return;
-    for (const [event, listener] of this.#registered.splice(0)) player.removeListener(event, listener);
+    for (const [event, listener] of this.#registered.splice(0))
+      player.removeListener(event, listener);
     player.disconnect();
     this.#player = null;
     this.#deviceId = null;
@@ -324,7 +329,11 @@ export class SpotifyOutput implements AudioOutput {
 
   #awaitReady(): Promise<string> {
     if (this.#deviceId !== null) return Promise.resolve(this.#deviceId);
-    if (this.#status === 'unsupported' || this.#status === 'no-premium' || this.#status === 'error') {
+    if (
+      this.#status === 'unsupported' ||
+      this.#status === 'no-premium' ||
+      this.#status === 'error'
+    ) {
       return Promise.reject(new PlaybackError('spotify-not-ready'));
     }
     return new Promise<string>((resolve, reject) => {
@@ -358,11 +367,14 @@ export class SpotifyOutput implements AudioOutput {
     for (let attempt = 0; ; attempt++) {
       const token = await this.#deps.tokens.getAccessToken();
       if (token === null) throw new PlaybackError('spotify-not-ready');
-      const response = await this.#deps.fetch(`${PLAY_URL}?device_id=${encodeURIComponent(deviceId)}`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uris: [uri], position_ms: positionMs }),
-      });
+      const response = await this.#deps.fetch(
+        `${PLAY_URL}?device_id=${encodeURIComponent(deviceId)}`,
+        {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uris: [uri], position_ms: positionMs }),
+        },
+      );
       if (response.ok) return;
       const delay = backoff[attempt];
       if (response.status === 404 && delay !== undefined) {
@@ -387,7 +399,12 @@ export class SpotifyOutput implements AudioOutput {
     if (!this.#sessionActive || this.#sessionEnded) return;
     const now = this.#deps.clock.now();
     const previous = this.#lastState;
-    this.#lastState = { paused: state.paused, position: state.position, duration: state.duration, receivedAt: now };
+    this.#lastState = {
+      paused: state.paused,
+      position: state.position,
+      duration: state.duration,
+      receivedAt: now,
+    };
 
     if (state.paused && state.position === 0 && !this.#userPaused) {
       const playedBefore = state.track_window.previous_tracks.some((track) => this.#isOurs(track));
@@ -433,7 +450,14 @@ export class SpotifyOutput implements AudioOutput {
     const player = this.#player;
     if (player === null) return;
     const state = await player.getCurrentState().catch(() => null);
-    if (state === null || !this.#sessionActive || this.#sessionEnded || this.#userPaused || state.paused) return;
+    if (
+      state === null ||
+      !this.#sessionActive ||
+      this.#sessionEnded ||
+      this.#userPaused ||
+      state.paused
+    )
+      return;
     if (state.duration > 0 && state.position >= state.duration - POLL_END_MARGIN_MS) {
       this.#finish();
       return;

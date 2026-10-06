@@ -99,7 +99,8 @@ export class LocalFileProvider {
         title: title === '' ? stripExtension(file.name) : title,
         artists: metadata.artists.map((artist) => artist.trim()).filter((artist) => artist !== ''),
         album: { id: null, name: albumName },
-        durationMs: metadata.durationMs !== null && metadata.durationMs > 0 ? metadata.durationMs : 0,
+        durationMs:
+          metadata.durationMs !== null && metadata.durationMs > 0 ? metadata.durationMs : 0,
         artwork,
         explicit: false,
         externalUrl: null,

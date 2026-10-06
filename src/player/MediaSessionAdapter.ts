@@ -69,8 +69,10 @@ export class BrowserMediaSession implements MediaSessionAdapter {
     }
     const artwork: MediaMetadataInit['artwork'] = [];
     if (song.artwork.small !== undefined) artwork.push({ src: song.artwork.small, sizes: '64x64' });
-    if (song.artwork.medium !== undefined) artwork.push({ src: song.artwork.medium, sizes: '300x300' });
-    if (song.artwork.large !== undefined) artwork.push({ src: song.artwork.large, sizes: '640x640' });
+    if (song.artwork.medium !== undefined)
+      artwork.push({ src: song.artwork.medium, sizes: '300x300' });
+    if (song.artwork.large !== undefined)
+      artwork.push({ src: song.artwork.large, sizes: '640x640' });
     this.#session.metadata = this.#createMetadata({
       title: song.title,
       artist: song.artists.join(', '),
@@ -88,7 +90,11 @@ export class BrowserMediaSession implements MediaSessionAdapter {
     if (this.#session === null) return;
     if (!Number.isFinite(durationMs) || durationMs <= 0) return;
     const position = Math.min(Math.max(positionMs, 0), durationMs);
-    this.#session.setPositionState({ duration: durationMs / 1000, position: position / 1000, playbackRate: 1 });
+    this.#session.setPositionState({
+      duration: durationMs / 1000,
+      position: position / 1000,
+      playbackRate: 1,
+    });
   }
 
   setActionHandlers(handlers: Partial<MediaSessionHandlers>): void {
@@ -97,7 +103,10 @@ export class BrowserMediaSession implements MediaSessionAdapter {
     const { play, pause, previoustrack, nexttrack, seekto } = handlers;
     session.setActionHandler('play', play === undefined ? null : () => play());
     session.setActionHandler('pause', pause === undefined ? null : () => pause());
-    session.setActionHandler('previoustrack', previoustrack === undefined ? null : () => previoustrack());
+    session.setActionHandler(
+      'previoustrack',
+      previoustrack === undefined ? null : () => previoustrack(),
+    );
     session.setActionHandler('nexttrack', nexttrack === undefined ? null : () => nexttrack());
     session.setActionHandler(
       'seekto',

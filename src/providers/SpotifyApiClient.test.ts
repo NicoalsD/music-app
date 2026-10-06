@@ -48,7 +48,10 @@ function setup(...responders: ConstructorParameters<typeof FakeFetch>) {
 const ok = () => jsonResponse({ ok: true });
 const headersOf = (init: RequestInit): Record<string, string> => {
   const headers = init.headers;
-  return typeof headers === 'object' && headers !== null && !Array.isArray(headers) && !(headers instanceof Headers)
+  return typeof headers === 'object' &&
+    headers !== null &&
+    !Array.isArray(headers) &&
+    !(headers instanceof Headers)
     ? headers
     : {};
 };
@@ -104,7 +107,11 @@ describe('SpotifyApiClient', () => {
   });
 
   it('defaults the wait to one second when Retry-After is missing or invalid', async () => {
-    const { client, sleeps } = setup(jsonResponse({}, 429), jsonResponse({}, 429, { 'Retry-After': 'soon' }), ok());
+    const { client, sleeps } = setup(
+      jsonResponse({}, 429),
+      jsonResponse({}, 429, { 'Retry-After': 'soon' }),
+      ok(),
+    );
     await client.request('/v1/x', { guard: isOk });
     expect(sleeps).toEqual([1000, 1000]);
   });
@@ -123,7 +130,9 @@ describe('SpotifyApiClient', () => {
     expect(http.calls).toHaveLength(3);
 
     const failing = setup(jsonResponse({}, 502), jsonResponse({}, 502), jsonResponse({}, 502));
-    await expect(failing.client.request('/v1/x', { guard: isOk })).rejects.toBeInstanceOf(SpotifyApiError);
+    await expect(failing.client.request('/v1/x', { guard: isOk })).rejects.toBeInstanceOf(
+      SpotifyApiError,
+    );
     expect(failing.http.calls).toHaveLength(3);
   });
 
@@ -147,7 +156,9 @@ describe('SpotifyApiClient', () => {
 
   it('rejects with AbortError and does not retry when fetch is aborted', async () => {
     const { client, http, sleeps } = setup(new DOMException('aborted', 'AbortError'), ok());
-    await expect(client.request('/v1/x', { guard: isOk })).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(client.request('/v1/x', { guard: isOk })).rejects.toMatchObject({
+      name: 'AbortError',
+    });
     expect(http.calls).toHaveLength(1);
     expect(sleeps).toHaveLength(0);
   });
@@ -156,7 +167,9 @@ describe('SpotifyApiClient', () => {
     const { client, http } = setup(ok());
     const controller = new AbortController();
     controller.abort();
-    await expect(client.request('/v1/x', { guard: isOk, signal: controller.signal })).rejects.toMatchObject({
+    await expect(
+      client.request('/v1/x', { guard: isOk, signal: controller.signal }),
+    ).rejects.toMatchObject({
       name: 'AbortError',
     });
     expect(http.calls).toHaveLength(0);
@@ -165,7 +178,9 @@ describe('SpotifyApiClient', () => {
   it('falls back to a generic AbortError when aborted without a reason', async () => {
     const { client } = setup(ok());
     const signal = { aborted: true, reason: undefined } as AbortSignal;
-    await expect(client.request('/v1/x', { guard: isOk, signal })).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(client.request('/v1/x', { guard: isOk, signal })).rejects.toMatchObject({
+      name: 'AbortError',
+    });
   });
 
   it('passes the signal to fetch', async () => {
@@ -181,7 +196,9 @@ describe('SpotifyApiClient', () => {
     ['a body failing the guard', jsonResponse({ ok: 'yes' })],
   ])('throws SpotifyResponseError for %s', async (_name, response) => {
     const { client } = setup(response);
-    await expect(client.request('/v1/x', { guard: isOk })).rejects.toBeInstanceOf(SpotifyResponseError);
+    await expect(client.request('/v1/x', { guard: isOk })).rejects.toBeInstanceOf(
+      SpotifyResponseError,
+    );
   });
 });
 
@@ -210,6 +227,8 @@ describe('abortableSleep', () => {
   it('rejects immediately when already aborted', async () => {
     const controller = new AbortController();
     controller.abort();
-    await expect(abortableSleep(10, controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(abortableSleep(10, controller.signal)).rejects.toMatchObject({
+      name: 'AbortError',
+    });
   });
 });

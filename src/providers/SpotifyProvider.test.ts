@@ -35,7 +35,11 @@ const rawAlbum = (over: Record<string, unknown> = {}) => ({
 function setup(...responders: ConstructorParameters<typeof FakeFetch>) {
   const http = new FakeFetch(...responders);
   const client = new SpotifyApiClient({
-    auth: { getAccessToken: () => Promise.resolve('tok'), forceRefresh: () => Promise.resolve('tok'), logout: () => undefined },
+    auth: {
+      getAccessToken: () => Promise.resolve('tok'),
+      forceRefresh: () => Promise.resolve('tok'),
+      logout: () => undefined,
+    },
     fetch: http.fetch,
     sleep: () => Promise.resolve(),
   });
@@ -53,7 +57,11 @@ describe('SpotifyProvider.search', () => {
         albums: { items: [rawAlbum()], next: null },
       }),
     );
-    const results = await provider.search({ text: 'abc', types: ['track', 'artist', 'album'], page: 0 });
+    const results = await provider.search({
+      text: 'abc',
+      types: ['track', 'artist', 'album'],
+      page: 0,
+    });
     expect(results.tracks).toEqual([
       {
         trackId: 't1',
@@ -76,7 +84,12 @@ describe('SpotifyProvider.search', () => {
         artwork: { small: 'https://img/64', medium: 'https://img/300', large: 'https://img/640' },
       },
     ]);
-    expect(results.albums[0]).toMatchObject({ id: 'al1', artists: ['Artist A'], releaseYear: 2019, totalTracks: 12 });
+    expect(results.albums[0]).toMatchObject({
+      id: 'al1',
+      artists: ['Artist A'],
+      releaseYear: 2019,
+      totalTracks: 12,
+    });
     expect(results.hasMore).toBe(false);
     expect(urlOf(http).pathname).toBe('/v1/search');
   });
@@ -87,10 +100,16 @@ describe('SpotifyProvider.search', () => {
       { url: 'https://img/200', width: 200 },
     ];
     const { provider } = setup(
-      jsonResponse({ tracks: { items: [rawTrack({ album: { id: 'a', name: 'A', images: odd } })], next: null } }),
+      jsonResponse({
+        tracks: { items: [rawTrack({ album: { id: 'a', name: 'A', images: odd } })], next: null },
+      }),
     );
     const { tracks } = await provider.search({ text: 'x', types: ['track'], page: 0 });
-    expect(tracks[0]?.artwork).toEqual({ small: 'https://img/200', medium: 'https://img/200', large: 'https://img/500' });
+    expect(tracks[0]?.artwork).toEqual({
+      small: 'https://img/200',
+      medium: 'https://img/200',
+      large: 'https://img/500',
+    });
   });
 
   it('uses the first image when widths are unknown and an empty artwork when there are none', async () => {
@@ -98,15 +117,26 @@ describe('SpotifyProvider.search', () => {
       jsonResponse({
         tracks: {
           items: [
-            rawTrack({ album: { id: 'a', name: 'A', images: [{ url: 'https://img/x', width: null }] } }),
-            rawTrack({ id: 't2', album: { id: 'a', name: 'A' }, external_urls: undefined, explicit: undefined }),
+            rawTrack({
+              album: { id: 'a', name: 'A', images: [{ url: 'https://img/x', width: null }] },
+            }),
+            rawTrack({
+              id: 't2',
+              album: { id: 'a', name: 'A' },
+              external_urls: undefined,
+              explicit: undefined,
+            }),
           ],
           next: null,
         },
       }),
     );
     const { tracks } = await provider.search({ text: 'x', types: ['track'], page: 0 });
-    expect(tracks[0]?.artwork).toEqual({ small: 'https://img/x', medium: 'https://img/x', large: 'https://img/x' });
+    expect(tracks[0]?.artwork).toEqual({
+      small: 'https://img/x',
+      medium: 'https://img/x',
+      large: 'https://img/x',
+    });
     expect(tracks[1]).toMatchObject({ artwork: {}, explicit: false, externalUrl: null });
   });
 
@@ -132,8 +162,10 @@ describe('SpotifyProvider.search', () => {
     const { provider, http } = setup(
       ...Array.from({ length: 5 }, () => jsonResponse({ tracks: { items: [], next: null } })),
     );
-    for (let page = 0; page < 5; page += 1) await provider.search({ text: 'q', types: ['track'], page });
-    for (const call of http.calls) expect(Number(new URL(call.url).searchParams.get('limit'))).toBeLessThanOrEqual(10);
+    for (let page = 0; page < 5; page += 1)
+      await provider.search({ text: 'q', types: ['track'], page });
+    for (const call of http.calls)
+      expect(Number(new URL(call.url).searchParams.get('limit'))).toBeLessThanOrEqual(10);
   });
 
   it('reports hasMore when any requested section has a next page', async () => {
@@ -149,7 +181,10 @@ describe('SpotifyProvider.search', () => {
 
   it('ignores null items and unrequested sections', async () => {
     const { provider } = setup(
-      jsonResponse({ tracks: { items: [null, rawTrack()], next: null }, artists: { items: [rawArtist], next: 'n' } }),
+      jsonResponse({
+        tracks: { items: [null, rawTrack()], next: null },
+        artists: { items: [rawArtist], next: 'n' },
+      }),
     );
     const results = await provider.search({ text: 'q', types: ['track'], page: 0 });
     expect(results.tracks).toHaveLength(1);
@@ -160,7 +195,9 @@ describe('SpotifyProvider.search', () => {
   it('returns empty results without calling the API for an empty query or no types', async () => {
     const { provider, http } = setup();
     const empty = { tracks: [], artists: [], albums: [], hasMore: false };
-    await expect(provider.search({ text: '   ', types: ['track'], page: 0 })).resolves.toEqual(empty);
+    await expect(provider.search({ text: '   ', types: ['track'], page: 0 })).resolves.toEqual(
+      empty,
+    );
     await expect(provider.search({ text: 'x', types: [], page: 0 })).resolves.toEqual(empty);
     expect(http.calls).toHaveLength(0);
   });
@@ -170,9 +207,9 @@ describe('SpotifyProvider.search', () => {
     await expect(provider.search({ text: 'x', types: ['track'], page: -1 })).rejects.toBeInstanceOf(
       InvalidOperationError,
     );
-    await expect(provider.search({ text: 'x', types: ['track'], page: 1.5 })).rejects.toBeInstanceOf(
-      InvalidOperationError,
-    );
+    await expect(
+      provider.search({ text: 'x', types: ['track'], page: 1.5 }),
+    ).rejects.toBeInstanceOf(InvalidOperationError);
   });
 
   it('passes the abort signal to fetch', async () => {
@@ -184,13 +221,15 @@ describe('SpotifyProvider.search', () => {
 
   it('fails with a typed error when a requested section is missing', async () => {
     const { provider } = setup(jsonResponse({ tracks: { items: [], next: null } }));
-    await expect(provider.search({ text: 'x', types: ['track', 'album'], page: 0 })).rejects.toBeInstanceOf(
-      SpotifyResponseError,
-    );
+    await expect(
+      provider.search({ text: 'x', types: ['track', 'album'], page: 0 }),
+    ).rejects.toBeInstanceOf(SpotifyResponseError);
   });
 
   it('fails with a typed error when a track has no album in a search result', async () => {
-    const { provider } = setup(jsonResponse({ tracks: { items: [rawTrack({ album: undefined })], next: null } }));
+    const { provider } = setup(
+      jsonResponse({ tracks: { items: [rawTrack({ album: undefined })], next: null } }),
+    );
     await expect(provider.search({ text: 'x', types: ['track'], page: 0 })).rejects.toBeInstanceOf(
       SpotifyResponseError,
     );
@@ -203,18 +242,44 @@ describe('SpotifyProvider.search', () => {
     ['a page with a non-array items', jsonResponse({ tracks: { items: {}, next: null } })],
     ['a page with a bad next', jsonResponse({ tracks: { items: [], next: 3 } })],
     ['a malformed track', jsonResponse({ tracks: { items: [{ id: 1 }], next: null } })],
-    ['a track with bad duration', jsonResponse({ tracks: { items: [rawTrack({ duration_ms: 'x' })], next: null } })],
-    ['a track with bad artists', jsonResponse({ tracks: { items: [rawTrack({ artists: [1] })], next: null } })],
-    ['a track with bad explicit', jsonResponse({ tracks: { items: [rawTrack({ explicit: 'y' })], next: null } })],
-    ['a track with a bad album', jsonResponse({ tracks: { items: [rawTrack({ album: { id: 1 } })], next: null } })],
+    [
+      'a track with bad duration',
+      jsonResponse({ tracks: { items: [rawTrack({ duration_ms: 'x' })], next: null } }),
+    ],
+    [
+      'a track with bad artists',
+      jsonResponse({ tracks: { items: [rawTrack({ artists: [1] })], next: null } }),
+    ],
+    [
+      'a track with bad explicit',
+      jsonResponse({ tracks: { items: [rawTrack({ explicit: 'y' })], next: null } }),
+    ],
+    [
+      'a track with a bad album',
+      jsonResponse({ tracks: { items: [rawTrack({ album: { id: 1 } })], next: null } }),
+    ],
     [
       'a track with bad images',
-      jsonResponse({ tracks: { items: [rawTrack({ album: { id: 'a', name: 'A', images: [{ url: 3 }] } })], next: null } }),
+      jsonResponse({
+        tracks: {
+          items: [rawTrack({ album: { id: 'a', name: 'A', images: [{ url: 3 }] } })],
+          next: null,
+        },
+      }),
     ],
-    ['an artist with bad genres', jsonResponse({ artists: { items: [{ ...rawArtist, genres: [1] }], next: null } })],
+    [
+      'an artist with bad genres',
+      jsonResponse({ artists: { items: [{ ...rawArtist, genres: [1] }], next: null } }),
+    ],
     ['an artist with a bad id', jsonResponse({ artists: { items: [{ name: 'x' }], next: null } })],
-    ['an artist with bad images', jsonResponse({ artists: { items: [{ ...rawArtist, images: 1 }], next: null } })],
-    ['an album without artists', jsonResponse({ albums: { items: [rawAlbum({ artists: 1 })], next: null } })],
+    [
+      'an artist with bad images',
+      jsonResponse({ artists: { items: [{ ...rawArtist, images: 1 }], next: null } }),
+    ],
+    [
+      'an album without artists',
+      jsonResponse({ albums: { items: [rawAlbum({ artists: 1 })], next: null } }),
+    ],
     ['an album with a bad id', jsonResponse({ albums: { items: [{ name: 'x' }], next: null } })],
   ])('fails with a typed error on %s', async (_name, response) => {
     const { provider } = setup(response);
@@ -226,7 +291,12 @@ describe('SpotifyProvider.search', () => {
   it('handles albums with missing optional fields', async () => {
     const { provider } = setup(
       jsonResponse({
-        albums: { items: [rawAlbum({ release_date: 'unknown', total_tracks: undefined, images: undefined })], next: null },
+        albums: {
+          items: [
+            rawAlbum({ release_date: 'unknown', total_tracks: undefined, images: undefined }),
+          ],
+          next: null,
+        },
         artists: { items: [{ id: 'a', name: 'A' }], next: null },
       }),
     );
@@ -248,7 +318,10 @@ describe('SpotifyProvider.getAlbum', () => {
 
   it('reuses album images for tracks and returns a single page', async () => {
     const { provider, http } = setup(
-      jsonResponse({ ...rawAlbum(), tracks: { items: [albumTrack(1), albumTrack(2)], next: null } }),
+      jsonResponse({
+        ...rawAlbum(),
+        tracks: { items: [albumTrack(1), albumTrack(2)], next: null },
+      }),
     );
     const album = await provider.getAlbum('al1');
     expect(urlOf(http).pathname).toBe('/v1/albums/al1');
@@ -263,7 +336,10 @@ describe('SpotifyProvider.getAlbum', () => {
 
   it('paginates through the remaining album tracks', async () => {
     const { provider, http } = setup(
-      jsonResponse({ ...rawAlbum(), tracks: { items: [albumTrack(1), albumTrack(2)], next: 'more' } }),
+      jsonResponse({
+        ...rawAlbum(),
+        tracks: { items: [albumTrack(1), albumTrack(2)], next: 'more' },
+      }),
       jsonResponse({ items: [albumTrack(3), albumTrack(4)], next: 'more' }),
       jsonResponse({ items: [albumTrack(5)], next: null }),
     );
@@ -288,7 +364,9 @@ describe('SpotifyProvider.getAlbum', () => {
   });
 
   it('encodes the album id', async () => {
-    const { provider, http } = setup(jsonResponse({ ...rawAlbum(), tracks: { items: [], next: null } }));
+    const { provider, http } = setup(
+      jsonResponse({ ...rawAlbum(), tracks: { items: [], next: null } }),
+    );
     await provider.getAlbum('a/b');
     expect(urlOf(http).pathname).toBe('/v1/albums/a%2Fb');
   });
@@ -296,7 +374,10 @@ describe('SpotifyProvider.getAlbum', () => {
   it.each([
     ['missing tracks', jsonResponse(rawAlbum())],
     ['a malformed album', jsonResponse({ tracks: { items: [], next: null } })],
-    ['a malformed track page', jsonResponse({ ...rawAlbum(), tracks: { items: [{}], next: null } })],
+    [
+      'a malformed track page',
+      jsonResponse({ ...rawAlbum(), tracks: { items: [{}], next: null } }),
+    ],
   ])('fails with a typed error on %s', async (_name, response) => {
     const { provider } = setup(response);
     await expect(provider.getAlbum('al1')).rejects.toBeInstanceOf(SpotifyResponseError);

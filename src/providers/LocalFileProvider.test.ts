@@ -1,7 +1,13 @@
 import { LocalFileProvider } from './LocalFileProvider';
 import type { LocalMetadata } from './LocalFileProvider';
 
-const noTags: LocalMetadata = { title: null, artists: [], album: null, durationMs: null, picture: null };
+const noTags: LocalMetadata = {
+  title: null,
+  artists: [],
+  album: null,
+  durationMs: null,
+  picture: null,
+};
 
 function setup(metadata: LocalMetadata | ((file: File) => Promise<LocalMetadata>) = noTags) {
   const created: string[] = [];
@@ -34,7 +40,10 @@ describe('LocalFileProvider.importFiles', () => {
   it('rejects unsupported formats without parsing them', async () => {
     const parse = vi.fn(() => Promise.resolve(noTags));
     const { provider, created } = setup(parse);
-    const result = await provider.importFiles([audio('notes.txt', 'text/plain'), audio('video.mp4', '')]);
+    const result = await provider.importFiles([
+      audio('notes.txt', 'text/plain'),
+      audio('video.mp4', ''),
+    ]);
     expect(result.tracks).toEqual([]);
     expect(result.rejected).toEqual([
       { fileName: 'notes.txt', reason: 'unsupported' },
@@ -99,7 +108,11 @@ describe('LocalFileProvider.importFiles', () => {
     const { tracks } = await provider.importFiles([audio('a.mp3')]);
     expect(created).toHaveLength(2);
     expect(tracks[0]?.uri).toBe('blob:fake-1');
-    expect(tracks[0]?.artwork).toEqual({ small: 'blob:fake-2', medium: 'blob:fake-2', large: 'blob:fake-2' });
+    expect(tracks[0]?.artwork).toEqual({
+      small: 'blob:fake-2',
+      medium: 'blob:fake-2',
+      large: 'blob:fake-2',
+    });
   });
 
   it('rejects unreadable files and keeps importing the rest', async () => {
@@ -117,7 +130,11 @@ describe('LocalFileProvider.importFiles', () => {
     const revoked: string[] = [];
     let calls = 0;
     const provider = new LocalFileProvider({
-      parseMetadata: () => Promise.resolve({ ...noTags, picture: { data: new Uint8Array([1]), mimeType: 'image/png' } }),
+      parseMetadata: () =>
+        Promise.resolve({
+          ...noTags,
+          picture: { data: new Uint8Array([1]), mimeType: 'image/png' },
+        }),
       createObjectUrl: () => {
         calls += 1;
         if (calls === 2) throw new Error('no memory');

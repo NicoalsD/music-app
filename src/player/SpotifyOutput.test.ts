@@ -86,7 +86,8 @@ class FakePlayer implements SpotifyPlayerLike {
     return total;
   }
   #fire(event: SpotifyEventName, payload: unknown): void {
-    for (const listener of [...(this.listeners.get(event) ?? [])]) (listener as (p: unknown) => void)(payload);
+    for (const listener of [...(this.listeners.get(event) ?? [])])
+      (listener as (p: unknown) => void)(payload);
   }
   emitReady(): void {
     this.#fire('ready', { device_id: this.deviceId });
@@ -147,7 +148,10 @@ class FakeTokens implements AccessTokenSource {
 const URI = 'spotify:track:a';
 const noContent = (): Response => new Response(null, { status: 204 });
 
-function track(uri: string, linkedFrom: string | null = null): SpotifyStateLike['track_window']['current_track'] {
+function track(
+  uri: string,
+  linkedFrom: string | null = null,
+): SpotifyStateLike['track_window']['current_track'] {
   return linkedFrom === null ? { uri } : { uri, linked_from: { uri: linkedFrom } };
 }
 
@@ -164,7 +168,10 @@ function state(options: StateOptions = {}): SpotifyStateLike {
     paused: options.paused ?? false,
     position: options.position ?? 0,
     duration: options.duration ?? 180_000,
-    track_window: { current_track: options.current ?? track(URI), previous_tracks: options.previous ?? [] },
+    track_window: {
+      current_track: options.current ?? track(URI),
+      previous_tracks: options.previous ?? [],
+    },
   };
 }
 
@@ -181,7 +188,10 @@ interface Env {
   player(): FakePlayer;
 }
 
-function setup(responders: Responder[] = [noContent()], configure?: (player: FakePlayer) => void): Env {
+function setup(
+  responders: Responder[] = [noContent()],
+  configure?: (player: FakePlayer) => void,
+): Env {
   const players: FakePlayer[] = [];
   class TestPlayer extends FakePlayer {
     constructor(options: SpotifyPlayerInit) {
@@ -190,7 +200,9 @@ function setup(responders: Responder[] = [noContent()], configure?: (player: Fak
       players.push(this);
     }
   }
-  const loadSdk = vi.fn<() => Promise<SpotifySdkLike>>(() => Promise.resolve({ Player: TestPlayer }));
+  const loadSdk = vi.fn<() => Promise<SpotifySdkLike>>(() =>
+    Promise.resolve({ Player: TestPlayer }),
+  );
   const fetcher = new FakeFetch(...responders);
   const timers = new FakeTimers();
   const clock = new FakeClock(0);
@@ -326,7 +338,10 @@ describe('SpotifyOutput', () => {
       const playing = env.output.play();
       await settle();
       env.timers.expire(10_000);
-      await expect(playing).rejects.toMatchObject({ name: 'PlaybackError', message: 'spotify-not-ready' });
+      await expect(playing).rejects.toMatchObject({
+        name: 'PlaybackError',
+        message: 'spotify-not-ready',
+      });
       expect(env.output.getStatus()).toBe('error');
       expect(env.player().calls).toContain('disconnect');
     });
@@ -511,7 +526,10 @@ describe('SpotifyOutput', () => {
       const call = env.fetch.calls[0];
       expect(call?.url).toBe('https://api.spotify.com/v1/me/player/play?device_id=dev-1');
       expect(call?.init.method).toBe('PUT');
-      expect(call?.init.headers).toEqual({ Authorization: 'Bearer token-1', 'Content-Type': 'application/json' });
+      expect(call?.init.headers).toEqual({
+        Authorization: 'Bearer token-1',
+        'Content-Type': 'application/json',
+      });
       expect(JSON.parse(String(call?.init.body))).toEqual({ uris: [URI], position_ms: 12_000 });
       await env.output.load(song('spotify:track:b'));
       await env.output.play();
@@ -545,7 +563,12 @@ describe('SpotifyOutput', () => {
     });
 
     it('retries a 404 device-not-found with 300, 600 and 1200 ms backoff', async () => {
-      const env = setup([jsonResponse({}, 404), jsonResponse({}, 404), jsonResponse({}, 404), noContent()]);
+      const env = setup([
+        jsonResponse({}, 404),
+        jsonResponse({}, 404),
+        jsonResponse({}, 404),
+        noContent(),
+      ]);
       env.timers.autoSleep = true;
       await startPlaying(env);
       expect(env.fetch.calls).toHaveLength(4);
@@ -556,7 +579,10 @@ describe('SpotifyOutput', () => {
       const env = setup([404, 404, 404, 404].map(() => jsonResponse({}, 404)));
       env.timers.autoSleep = true;
       await env.output.load(song());
-      await expect(env.output.play()).rejects.toMatchObject({ name: 'PlaybackError', message: 'playback-failed' });
+      await expect(env.output.play()).rejects.toMatchObject({
+        name: 'PlaybackError',
+        message: 'playback-failed',
+      });
       expect(env.fetch.calls).toHaveLength(4);
       env.player().emitState(state({ paused: true, position: 0, previous: [track(URI)] }));
       expect(types(env)).toEqual([]);
@@ -729,7 +755,11 @@ describe('SpotifyOutput', () => {
       const env = setup();
       await startPlaying(env);
       env.player().emitState(
-        state({ paused: true, position: 0, previous: [track('spotify:track:other', 'spotify:track:else')] }),
+        state({
+          paused: true,
+          position: 0,
+          previous: [track('spotify:track:other', 'spotify:track:else')],
+        }),
       );
       expect(types(env)).toEqual(['progress', 'paused']);
     });

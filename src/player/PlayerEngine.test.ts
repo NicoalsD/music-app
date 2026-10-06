@@ -737,7 +737,9 @@ describe('PlayerEngine', () => {
       env.engine.toggleShuffle();
       expect(env.engine.getState().shuffle).toBe(true);
       const expected = new ShuffleOrder(env.ids(), env.ids()[1] ?? null, new SeededRandom(7)).ids();
-      const expectedTracks = expected.map((id) => env.library.active.songs().find((s) => s.entryId === id)?.trackId);
+      const expectedTracks = expected.map(
+        (id) => env.library.active.songs().find((s) => s.entryId === id)?.trackId,
+      );
       const seen = await playOrder(env, 5);
       expect(seen).toEqual(expectedTracks);
       expect(seen[0]).toBe('b');
@@ -797,7 +799,10 @@ describe('PlayerEngine', () => {
       env.library.active.addLast(makeTrack('y'));
       env.library.active.remove(env.ids()[2] ?? '');
       await env.engine.onPlaylistChanged();
-      const remaining = env.library.active.songs().map((s) => s.trackId).sort();
+      const remaining = env.library.active
+        .songs()
+        .map((s) => s.trackId)
+        .sort();
       const seen = await playOrder(env, remaining.length);
       expect([...seen].sort()).toEqual(remaining);
       expect(new Set(seen).size).toBe(remaining.length);
@@ -815,8 +820,15 @@ describe('PlayerEngine', () => {
     });
 
     it('starts with shuffle enabled from the initial preferences', async () => {
-      const env = setup(['a', 'b', 'c'], { initial: { shuffle: true, repeat: 'all', volume: 0.4, muted: true } });
-      expect(env.engine.getState()).toMatchObject({ shuffle: true, repeat: 'all', volume: 0.4, muted: true });
+      const env = setup(['a', 'b', 'c'], {
+        initial: { shuffle: true, repeat: 'all', volume: 0.4, muted: true },
+      });
+      expect(env.engine.getState()).toMatchObject({
+        shuffle: true,
+        repeat: 'all',
+        volume: 0.4,
+        muted: true,
+      });
       await env.engine.play();
       await env.engine.next();
       expect(env.engine.getState().status).toBe('playing');

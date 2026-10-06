@@ -43,7 +43,12 @@ class FakeAudioElement implements AudioElementLike {
   }
 }
 
-function setup(): { element: FakeAudioElement; output: Html5AudioOutput; events: AudioOutputEvent[]; song: Song } {
+function setup(): {
+  element: FakeAudioElement;
+  output: Html5AudioOutput;
+  events: AudioOutputEvent[];
+  song: Song;
+} {
   const element = new FakeAudioElement();
   const output = new Html5AudioOutput(element);
   const events: AudioOutputEvent[] = [];
@@ -99,7 +104,14 @@ describe('Html5AudioOutput', () => {
     element.fire('stalled');
     element.fire('ended');
     element.fire('error');
-    expect(events.map((event) => event.type)).toEqual(['playing', 'paused', 'loading', 'loading', 'ended', 'error']);
+    expect(events.map((event) => event.type)).toEqual([
+      'playing',
+      'paused',
+      'loading',
+      'loading',
+      'ended',
+      'error',
+    ]);
     const last = events.at(-1);
     expect(last?.type === 'error' ? last.error.name : null).toBe('PlaybackError');
   });
