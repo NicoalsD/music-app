@@ -1,5 +1,5 @@
 import { DoublyLinkedList } from './DoublyLinkedList';
-import { InvalidOperationError, SongNotFoundError } from './errors';
+import { IndexOutOfRangeError, InvalidOperationError, SongNotFoundError } from './errors';
 import type { Node } from './Node';
 import type { IdGenerator } from './ports';
 import { Song } from './Song';
@@ -112,6 +112,19 @@ export class Playlist {
     const added: Song[] = [];
     tracks.forEach((t, i) => added.push(this.addAt(i, t)));
     return added;
+  }
+
+  /** Inserts all tracks starting at `index` (0..size), keeping their given order. */
+  addManyAt(index: number, tracks: readonly Track[]): Song[] {
+    if (!Number.isInteger(index) || index < 0 || index > this.size) {
+      throw new IndexOutOfRangeError(index, 0, this.size);
+    }
+    return tracks.map((t, i) => this.addAt(index + i, t));
+  }
+
+  /** Inserts all tracks right after current (at the start when there is none), in order. */
+  addManyNext(tracks: readonly Track[]): Song[] {
+    return this.addManyAt(this.#current === null ? 0 : this.currentIndex + 1, tracks);
   }
 
   remove(entryId: string): RemoveResult {

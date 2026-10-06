@@ -18,6 +18,14 @@ function filled(...trackIds: string[]): Playlist {
   return p;
 }
 
+/** Playlist hides its list, so check the links through the public view (order and indexes). */
+function expectLinked(p: Playlist): void {
+  const songs = p.songs();
+  expect(songs).toHaveLength(p.size);
+  songs.forEach((song, i) => expect(p.indexOf(song.entryId)).toBe(i));
+  if (p.current !== null) expect(songs[p.currentIndex]).toBe(p.current);
+}
+
 describe('Playlist', () => {
   describe('basics', () => {
     it('exposes id, name and createdAt', () => {
@@ -120,6 +128,61 @@ describe('Playlist', () => {
       p.addManyFirst([makeTrack('1'), makeTrack('2')]);
       expect(titles(p)).toEqual(['1', '2']);
       expect(p.current?.trackId).toBe('1');
+    });
+
+    it('addManyAt inserts a block in order and keeps current when inserting before it', () => {
+      const p = filled('a', 'b', 'c');
+      p.select(p.songs()[1]?.entryId ?? '');
+      p.addManyAt(1, [makeTrack('x'), makeTrack('y')]);
+      expect(titles(p)).toEqual(['a', 'x', 'y', 'b', 'c']);
+      expect(p.current?.trackId).toBe('b');
+      expect(p.currentIndex).toBe(3);
+      expectLinked(p);
+    });
+
+    it('addManyAt accepts both extremes and an empty list', () => {
+      const p = filled('a', 'b');
+      p.addManyAt(0, [makeTrack('1'), makeTrack('2')]);
+      p.addManyAt(4, [makeTrack('3'), makeTrack('4')]);
+      p.addManyAt(2, []);
+      expect(titles(p)).toEqual(['1', '2', 'a', 'b', '3', '4']);
+      expect(p.current?.trackId).toBe('a');
+      expectLinked(p);
+    });
+
+    it('addManyAt on an empty playlist makes the first track current', () => {
+      const p = makePlaylist();
+      p.addManyAt(0, [makeTrack('1'), makeTrack('2')]);
+      expect(titles(p)).toEqual(['1', '2']);
+      expect(p.current?.trackId).toBe('1');
+    });
+
+    it('addManyAt rejects indexes outside 0..size without changing the list', () => {
+      const p = filled('a');
+      expect(() => p.addManyAt(2, [makeTrack('x')])).toThrow(IndexOutOfRangeError);
+      expect(() => p.addManyAt(-1, [makeTrack('x')])).toThrow(IndexOutOfRangeError);
+      expect(() => p.addManyAt(0.5, [makeTrack('x')])).toThrow(IndexOutOfRangeError);
+      expect(titles(p)).toEqual(['a']);
+    });
+
+    it('addManyNext inserts the block right after current in order', () => {
+      const p = filled('a', 'b', 'c');
+      p.select(p.songs()[1]?.entryId ?? '');
+      p.addManyNext([makeTrack('x'), makeTrack('y')]);
+      expect(titles(p)).toEqual(['a', 'b', 'x', 'y', 'c']);
+      expect(p.current?.trackId).toBe('b');
+      expectLinked(p);
+    });
+
+    it('addManyNext at the tail appends and without current prepends', () => {
+      const p = filled('a', 'b');
+      p.select(p.songs()[1]?.entryId ?? '');
+      p.addManyNext([makeTrack('x')]);
+      expect(titles(p)).toEqual(['a', 'b', 'x']);
+      const empty = makePlaylist();
+      empty.addManyNext([makeTrack('1'), makeTrack('2')]);
+      expect(titles(empty)).toEqual(['1', '2']);
+      expect(empty.current?.trackId).toBe('1');
     });
   });
 
