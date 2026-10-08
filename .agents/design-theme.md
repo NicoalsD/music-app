@@ -180,45 +180,62 @@ La estructura se inspira en el reproductor web de Spotify y en los clientes mini
 
 ## 7.1 Reproduciendo ahora
 
-Es la vista de inmersión de la canción actual, inspirada en la vista de reproducción del cliente QML de Spotify. Se abre desde el botón "Reproduciendo ahora" de la barra. El botón "Letra" la abre con el panel de letra en primer plano. En escritorio ocupa el panel principal y la barra inferior sigue visible. En móvil ocupa toda la pantalla.
+Es la vista de inmersión de la canción actual, inspirada en la vista de reproducción del cliente QML de Spotify. Ocupa toda la ventana y es un diálogo de Radix (`RadixDialog.Content`) sin fondo propio: la escena de la sección 3.1 se ve alrededor de dos paneles shōji. La barra inferior se oculta mientras la vista está abierta (`visibility: hidden`), así que sus controles pasan a estar dentro de la vista.
 
 **Apertura y cierre**
-- Se cierra con **Esc** o con el botón "Cerrar" (con `aria-label`). Al cerrar, el foco vuelve al botón que la abrió.
+- Se abre desde la barra de tres formas: el botón "Reproduciendo ahora" (`aria-label` "Reproduciendo ahora"), la carátula de la barra (`aria-label` "Abrir la pantalla de reproducción", solo si la canción tiene carátula) y el botón "Letra", que la abre con la columna de letra visible.
+- Se cierra con **Esc** o con el botón "Cerrar" de la barra de herramientas. Al cerrar, el foco vuelve al elemento que tenía el foco al abrir.
 - Al abrir, el foco entra en el título de la canción.
-- La vista se mantiene sincronizada con la canción actual. Si la canción cambia, la carátula, la letra y el fondo cambian con ella.
+- Los atajos globales (Espacio, flechas, M, S, R) siguen funcionando dentro de la vista, porque el diálogo lleva `data-now-playing-view` y los atajos lo tienen en cuenta.
+- La vista siempre muestra la canción actual. Si la canción cambia, la carátula, la letra y el color del sol cambian con ella.
 
-**Columna izquierda (escritorio: unos 45 % del ancho)**
-- **Carátula grande** de hasta 640 px, dentro de un paspartú de papel de 4 px y con un contorno de 1.5 px en `--ink`. Si no tiene imagen, va el respaldo *hanko* de la sección 4. El `alt` es "Portada de {álbum}".
-- **Anillo decorativo** alrededor de la carátula: un trazo fino en `--ink`, con `aria-hidden="true"`. Es solo decoración. Spotify protege el audio con DRM, así que no hay visualizador real y el anillo **no reacciona al sonido**. Tampoco gira ni pulsa en bucle.
-- **Título** en Shippori Mincho 600 (32 px en móvil y 44 px en escritorio), los **artistas** en Zen Kaku Gothic 500 y el **álbum** en `--ink-soft`. El título es la región con `aria-live="polite"` de "Reproduciendo ahora".
-- **Progreso**: el mismo cable de tinta con la golondrina como control. Es un Slider de Radix, así que se opera con las flechas. Los tiempos usan `tabular-nums`.
-- **Controles**: anterior, play y pausa, siguiente, repeat y shuffle en una fila, con el volumen y el mute debajo. Todos los botones de solo icono tienen `aria-label`.
+**Barra de herramientas (superior, shōji con la celosía *kumiko*)**
+- A la izquierda, el botón "Cerrar" (icono de equis).
+- A la derecha, el botón "Mostrar la letra" / "Ocultar la letra" (icono de micrófono). Es un botón de estado (`aria-pressed`) y solo oculta o muestra la columna de letra; no cierra la vista.
+- La columna de letra se muestra por defecto y el valor se recuerda entre aperturas, mientras la sesión dura.
 
-**Columna derecha (escritorio) o debajo de la carátula (móvil)**
-- **Letra** sobre un panel shōji (sección 3.1), con el texto de atribución "Letras: LRCLIB" en `--ink-soft`.
-- **Estados de la letra**:
-  - *Cargando*: el texto "Buscando la letra…", sin spinner en bucle.
+**Panel del reproductor (shōji, a la izquierda en escritorio)**
+- **Carátula** de hasta 640 px (y de 320 px en móvil), dentro de un paspartú de papel con un contorno de 1.5 px en `--ink`. Si no tiene imagen, va el respaldo *hanko* de la sección 4. El `alt` es "Portada de {álbum}".
+- **Anillo decorativo** alrededor de la carátula: un trazo fino en `--ink` al 85 % estático, con `aria-hidden="true"`. Spotify protege el audio con DRM, así que no hay visualizador real: el anillo no reacciona al sonido, no gira y no pulsa.
+- **Título** en Shippori Mincho (32 px en móvil y 44 px en escritorio). Es el encabezado de la vista y el que recibe el foco al abrir. Tiene `aria-live="polite"` y es el único anuncio de "Reproduciendo ahora". Debajo, los **artistas** en Zen Kaku Gothic 500 y el **álbum** en `--ink-soft`.
+- **Progreso**: el cable de tinta con la golondrina, que es un Slider de Radix y se opera con las flechas. Los tiempos usan `tabular-nums`.
+- **Controles**: aleatorio, anterior, play o pausa, siguiente y repetir, con el volumen y el mute debajo. Son los mismos controles de la barra (`TransportControls`) en tamaño grande. Todos los botones de solo icono tienen `aria-label`.
+- **Estado de reposo**: sin canción, el título muestra "Nada en reproducción" con la pista "Agrega canciones para empezar", la carátula no aparece, y los controles de anterior, play y siguiente quedan deshabilitados.
+
+**Columna de letra (shōji elevado, al 74 %)**
+- Ocupa la derecha en escritorio (55 % del ancho, frente al 45 % del reproductor) y debajo del reproductor en móvil, con una altura de 70 % de la altura de la pantalla. Si la columna está oculta, el panel del reproductor se centra con un ancho máximo de 720 px.
+- El texto de atribución "Letra: LRCLIB" aparece en los estados con letra, en `--ink-soft`.
+- **Estados de la letra** (los textos salen de `es.ts`):
+  - *Cargando*: "Buscando la letra…", con un spinner.
   - *Sincronizada*: las líneas con su tiempo.
   - *Texto plano*: el texto completo, desplazable, sin resaltado y sin seek.
-  - *Instrumental*: "Canción instrumental".
-  - *No disponible*: "No encontramos letra para esta canción". No ofrece reintentar, porque la respuesta fue "no existe".
+  - *Instrumental*: "Instrumental".
+  - *No disponible*: "Letra no disponible". No ofrece reintentar, porque la respuesta fue "no existe".
   - *Error*: "No se pudo cargar la letra", con el botón "Reintentar".
+  - *Reposo* (sin canción): "Nada en reproducción", sin atribución.
 - **Líneas sincronizadas**:
   - La línea activa va en `--ink`, en peso 700 y con `aria-current="true"`. Las demás van en `--ink-soft`, en peso 400.
+  - La línea activa se calcula con `useSyncExternalStore` sobre el progreso, así que en cada tick solo se vuelven a renderizar las líneas que cambian (las demás son `memo`).
   - El desplazamiento automático centra la línea activa. Con `prefers-reduced-motion` el salto es instantáneo.
-  - Si el usuario se desplaza a mano por la letra, el auto-desplazamiento se pausa durante unos 4 s y luego vuelve a seguir la línea activa.
-  - Cada línea es un botón. Un clic o Enter sobre ella hace seek a su tiempo. Las líneas de texto plano no son botones.
+  - Si el usuario usa la rueda del ratón o toca la letra, el auto-desplazamiento se pausa durante 4 s y luego vuelve a seguir la línea activa.
+  - Cada línea es un botón con `title` "Ir a {tiempo}". Un clic o Enter sobre ella hace seek a su tiempo y reanuda el seguimiento. Las líneas de texto plano no son botones.
   - No hay `aria-live` por línea, para no leer toda la letra mientras suena. El anuncio queda en el título.
 
-**Fondo (escena de la sección 3.1)**
-- El **sol** toma el tono dominante de la carátula actual. Ese tono se extrae de un canvas pequeño, se cuantiza y se aplica como un color **plano**, sin degradados ni blur.
-- La transición de color dura 600 ms.
+**Fondo: color del sol**
+- El sol de la escena toma el tono dominante de la carátula actual. `useSunColor` pide la imagen a `sampleSunColor`, que la dibuja en un canvas de 24 × 24 px (con `crossOrigin` anónimo) y calcula el color con `dominantColor`:
+  - Los píxeles casi transparentes y los casi negros o casi blancos se ignoran, porque no tienen tono.
+  - Los colores se cuantizan a 4 bits por canal. Cada cubo puntúa por su número de píxeles multiplicado por su saturación, así que un color vivo minoritario gana a un gris mayoritario. El resultado es el promedio del cubo ganador.
+- El color se convierte a `hsl` plano conservando el tono, con la luminosidad acotada entre 42 % y 68 % para que el panel encima sea legible.
+- El color se pasa a `BackdropScene` por la prop `sunColor` **solo mientras la vista está abierta**. Fuera de la vista el sol vuelve a `--shu`, y también vuelve si no hay carátula, si la carga falla, si el canvas queda contaminado (CORS) o si no hay píxeles útiles.
+- Los resultados se guardan en caché por URL. La transición del color dura 600 ms (`--duration-sun`).
+- El color solo colorea el sol. El texto nunca va directamente sobre él: todo va sobre el panel shōji, para mantener el contraste de 4.5:1.
 - La carátula **no** se difumina como fondo.
-- Si no hay carátula o la extracción falla, el sol vuelve a `--shu`.
-- El color llega por la variable CSS `--sun`, que se define en el contenedor de la vista. Es la única excepción a la regla de "ningún color directo en un componente": solo colorea el sol y nunca el texto.
-- Todo el texto va sobre el panel shōji, nunca directamente sobre el sol, para mantener el contraste de 4.5:1.
 
 **Animación**
-- La entrada de la vista es un fundido de opacidad con un desplazamiento de hasta 8 px, en 300 ms. Con `prefers-reduced-motion` queda solo el fundido.
+- La entrada de la vista es un fundido de opacidad con un desplazamiento de hasta 8 px, en 300 ms. El cierre usa la misma animación en sentido inverso y más corta. Con `prefers-reduced-motion` queda solo el fundido.
 - El cambio de carátula es un fundido cruzado de 300 ms (sección 6).
 - No hay animaciones en bucle dentro de la vista.
+
+**Móvil (menos de 768 px)**
+- Una sola columna: la barra de herramientas arriba, el reproductor y después la letra (si está visible). Toda la vista se desplaza.
+- La vista se abre desde la carátula de la barra o desde "Reproduciendo ahora".

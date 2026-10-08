@@ -203,14 +203,17 @@ En `src/core/__tests__/invariants.ts` va un helper que verifica las 6 invariante
 - Navegación entre vistas: Inicio → Buscar → álbum → "Volver" regresa a Buscar con el filtro, el texto y el scroll conservados. "Volver" sin historial lleva a Buscar.
 - Cada vista muestra su estado vacío, cargando y error. Home sin canciones ofrece buscar o importar.
 - La navegación marca la vista activa con `aria-current="page"`.
-- Reproduciendo ahora: se abre desde el botón de la barra y el foco entra en el título. "Letra" la abre con el panel de letra en primer plano.
+- Reproduciendo ahora: se abre desde "Reproduciendo ahora", la carátula de la barra o "Letra", y el foco entra en el título. "Letra" la abre con la columna de letra visible. El botón "Mostrar la letra" de la barra de herramientas oculta y muestra esa columna sin cerrar la vista.
+- Reproduciendo ahora: los atajos globales (Espacio, flechas, M) siguen funcionando dentro de la vista.
 - Reproduciendo ahora: Esc la cierra y el foco vuelve al botón que la abrió.
 - Línea activa: la línea con `aria-current="true"` es la que corresponde a `positionMs`.
 - Clic (o Enter) en una línea sincronizada llama a `seek` con su `timeMs`. Las líneas de texto plano no son botones.
-- Estados de la letra: cargando, sincronizada, texto plano (sin seek), instrumental, no disponible (sin "Reintentar") y error (con "Reintentar").
+- Estados de la letra: cargando ("Buscando la letra…"), sincronizada, texto plano (sin seek), instrumental ("Instrumental"), no disponible ("Letra no disponible", sin "Reintentar"), error ("No se pudo cargar la letra", con "Reintentar") y reposo sin canción ("Nada en reproducción").
+- Rueda del ratón o toque sobre la letra: el auto-desplazamiento se pausa 4 s y después vuelve a seguir la línea activa.
+- Color del sol: `dominantColor` ignora píxeles transparentes, casi negros y casi blancos, y `toSunColor` acota la luminosidad entre 42 % y 68 %. Sin carátula o con error de carga, el sol usa `--shu`.
 - Sin canción: estado vacío con un botón para buscar.
 - Con `prefers-reduced-motion`, el desplazamiento de la letra es instantáneo (se simula `matchMedia`).
-- Atribución "Letras: LRCLIB" visible en los estados con letra.
+- Atribución "Letra: LRCLIB" visible en los estados con letra.
 - Carátula sin imagen: se muestra el respaldo hanko con la inicial.
 - Navegación inferior móvil (`matchMedia` menor de 768 px): aparecen Inicio, Buscar y Biblioteca, con `aria-label` y el mini reproductor debajo.
 
@@ -228,8 +231,8 @@ Las letras se interceptan con `page.route('https://lrclib.net/**')`. Nunca hay r
 8. Repeat all en la última → vuelve a la primera.
 9. Deshacer una eliminación (toast de 5 s).
 10. Inicio: tras importar, muestra "Continuar escuchando" y "Tus playlists". Buscar sin login de Spotify explica qué falta.
-11. Reproduciendo ahora: se abre desde la barra, muestra el respaldo hanko (los fixtures no tienen carátula), Esc la cierra y el foco vuelve al botón.
-12. Letra sincronizada: con la ruta de LRCLIB simulada, la línea activa cambia a medida que avanza `tone-a`, y un clic en una línea mueve `currentTime`.
+11. Reproduciendo ahora: se abre con "Letra" desde la barra, el título recibe el foco, Esc la cierra y el foco vuelve al botón "Letra".
+12. Letra sincronizada: con la ruta de LRCLIB simulada, la línea activa cambia a medida que avanza `tone-a`, y un clic en una línea la deja activa (`aria-current`) tras hacer seek.
 13. Letra con error: LRCLIB responde 500 → se ve "No se pudo cargar la letra" → "Reintentar" hace una nueva petición. Con `route.abort()` el estado es el mismo.
 14. Teclado: el flujo 1 a 4 sin ratón. Espacio, ←/→, Shift+←/→ y M funcionan fuera de los inputs, y Esc cierra Reproduciendo ahora.
 15. Móvil a 360 × 740: la navegación inferior (Inicio, Buscar, Biblioteca) queda encima del mini reproductor, no hay desplazamiento horizontal y el flujo de importar sigue funcionando.
