@@ -13,6 +13,7 @@ import { entrySortId } from '../dnd/dragData';
 import { InsertionLine } from '../dnd/InsertionLine';
 import type { MoveTarget } from '../dnd/useEntryMover';
 import { strings } from '../i18n/es';
+import { FavoriteButton } from './FavoriteButton';
 import { RowMenuItems } from './RowMenuItems';
 import styles from './QueueRow.module.css';
 
@@ -76,6 +77,7 @@ function QueueRowBase({
       data-song-index={isNowPlaying ? undefined : song.index}
       data-current={isNowPlaying ? 'true' : 'false'}
       data-dragging={isDragging ? 'true' : 'false'}
+      data-row-hover-scope
       onKeyDown={onKeyDown}
     >
       {insertion === null ? null : <InsertionLine edge={insertion} />}
@@ -108,6 +110,7 @@ function QueueRowBase({
         </span>
       </button>
       {isNowPlaying ? <span className="visually-hidden">{strings.add.nowPlayingTag}</span> : null}
+      <FavoriteButton entry={song} reveal="hover" size={16} />
       <span className={styles.actions}>
         <Menu>
           <MenuTrigger asChild>
@@ -119,6 +122,7 @@ function QueueRowBase({
           <MenuContent align="end">
             <RowMenuItems
               entryId={song.entryId}
+              trackId={song.trackId}
               canMoveUp={!isNowPlaying && canMoveUp}
               canMoveDown={!isNowPlaying && canMoveDown}
               onMove={onMove}

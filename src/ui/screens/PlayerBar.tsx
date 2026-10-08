@@ -7,6 +7,7 @@ import { IconButton } from '../components/IconButton';
 import { ShojiPanel } from '../components/ShojiPanel';
 import { cx } from '../cx';
 import { strings } from '../i18n/es';
+import { FavoriteButton } from './FavoriteButton';
 import { PlayerNotice } from './PlayerNotice';
 import { PlayerProgress } from './PlayerProgress';
 import { TransportControls } from './TransportControls';
@@ -20,6 +21,8 @@ const selectBar = (s: PlayerSnapshot) => {
   const next = s.songs[s.currentIndex + 1];
   return {
     status: s.player.status,
+    entryId: current === undefined ? null : current.entryId,
+    trackId: current === undefined ? null : current.trackId,
     title: current === undefined ? null : current.title,
     artists: current === undefined ? '' : current.artistLabel,
     album: current === undefined ? '' : current.albumName,
@@ -92,6 +95,13 @@ export function PlayerBar({
             </a>
           ) : null}
         </div>
+        {bar.entryId !== null && bar.trackId !== null && bar.title !== null ? (
+          <FavoriteButton
+            entry={{ entryId: bar.entryId, trackId: bar.trackId, title: bar.title }}
+            size={18}
+            className={styles.favorite}
+          />
+        ) : null}
       </div>
 
       <div className={styles.center}>

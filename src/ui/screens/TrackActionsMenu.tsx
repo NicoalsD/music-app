@@ -7,6 +7,7 @@ import { Menu, MenuContent, MenuTrigger } from '../components/Menu';
 import { KitItem, KitSeparator, KitSub, KitSubContent, KitSubTrigger } from '../components/MenuKit';
 import type { MenuKind } from '../components/MenuKit';
 import { strings } from '../i18n/es';
+import { useIsFavorite } from './useIsFavorite';
 
 const selectSongs = (s: PlayerSnapshot): readonly SongView[] => s.songs;
 const selectPlaylists = (s: PlayerSnapshot): readonly PlaylistSummary[] => s.playlists;
@@ -67,6 +68,7 @@ function PlaylistTargetItems({ kind, track }: TrackMenuProps) {
 /** The actions of a catalog track, shared by the "more" dropdown and the right-click menu. */
 export function TrackMenuItems({ kind, track }: TrackMenuProps) {
   const store = useStore();
+  const liked = useIsFavorite(track.trackId);
   return (
     <>
       <KitItem kind={kind} onSelect={() => store.playNow(track)}>
@@ -74,6 +76,9 @@ export function TrackMenuItems({ kind, track }: TrackMenuProps) {
       </KitItem>
       <KitItem kind={kind} onSelect={() => store.addNext(track)}>
         {strings.add.playNext}
+      </KitItem>
+      <KitItem kind={kind} onSelect={() => store.toggleFavorite(track)}>
+        {liked ? strings.favorites.unlikeShort : strings.favorites.likeShort}
       </KitItem>
       <KitSeparator kind={kind} />
       <KitItem kind={kind} onSelect={() => store.addFirst(track)}>

@@ -83,6 +83,14 @@ describe('global keyboard shortcuts', () => {
     expect(h.store.getSnapshot().player.repeat).toBe('all');
   });
 
+  it('L likes and unlikes the current song', async () => {
+    const { h, user } = setup();
+    await user.keyboard('l');
+    expect(h.store.getSnapshot().favoriteTrackIds.has('a')).toBe(true);
+    await user.keyboard('L');
+    expect(h.store.getSnapshot().favoriteTrackIds.has('a')).toBe(false);
+  });
+
   it('slash focuses the search and question mark opens the help', async () => {
     const { onFocusSearch, onShowHelp, user } = setup();
     await user.keyboard('/');

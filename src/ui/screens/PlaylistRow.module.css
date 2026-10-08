@@ -168,10 +168,19 @@
   }
 }
 
+.favorite {
+  align-self: center;
+}
+
 @media (max-width: 560px) {
   .index,
   .duration,
   .remove {
+    display: none;
+  }
+
+  /* The title needs the room; liking stays in the row menu. A liked heart still shows. */
+  .favorite[data-liked='false'] {
     display: none;
   }
 }

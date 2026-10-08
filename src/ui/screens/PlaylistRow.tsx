@@ -15,6 +15,7 @@ import { entrySortId } from '../dnd/dragData';
 import type { MoveTarget } from '../dnd/useEntryMover';
 import { formatTime } from '../format';
 import { strings } from '../i18n/es';
+import { FavoriteButton } from './FavoriteButton';
 import { RowMenuItems } from './RowMenuItems';
 import styles from './PlaylistRow.module.css';
 
@@ -88,6 +89,7 @@ function PlaylistRowBase({
         style={{ transform: CSS.Transform.toString(transform), transition }}
         data-current={song.isCurrent ? 'true' : 'false'}
         data-dragging={isDragging ? 'true' : 'false'}
+        data-row-hover-scope
         onKeyDown={onKeyDown}
       >
         {insertion === null ? null : <InsertionLine edge={insertion} />}
@@ -114,6 +116,7 @@ function PlaylistRowBase({
           </span>
           <span className={`${styles.duration} tabular`}>{formatTime(song.durationMs)}</span>
         </button>
+        <FavoriteButton entry={song} reveal="hover" size={18} className={styles.favorite} />
         <span className={styles.seal}>
           {song.isCurrent ? <Hanko size={24} stampKey={song.entryId} /> : null}
         </span>
@@ -134,6 +137,7 @@ function PlaylistRowBase({
             <MenuContent align="end">
               <RowMenuItems
                 entryId={song.entryId}
+                trackId={song.trackId}
                 canMoveUp={!song.isHead}
                 canMoveDown={!song.isTail}
                 onMove={onMove}

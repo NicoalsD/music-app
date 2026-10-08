@@ -1,6 +1,6 @@
 import type { AuthState } from '../auth/SpotifyAuth';
 import { InvalidOperationError } from '../core/errors';
-import type { Playlist } from '../core/Playlist';
+import type { Playlist, PlaylistKind } from '../core/Playlist';
 import type { PlaylistLibrary } from '../core/PlaylistLibrary';
 import type { Artwork, Song, SongSource, Track } from '../core/Song';
 import type { PlayerEngine, PlayerProgress, PlayerState } from '../player/PlayerEngine';
@@ -78,6 +78,8 @@ export interface PlaylistSummary {
   readonly name: string;
   readonly size: number;
   readonly isActive: boolean;
+  /** 'favorites' is the automatic list of liked songs: it cannot be renamed or deleted. */
+  readonly kind: PlaylistKind;
 }
 
 export interface SongView {
@@ -113,6 +115,8 @@ export interface PlayerSnapshot {
   readonly player: PlayerState;
   readonly spotify: { readonly auth: AuthState; readonly status: SpotifyStatusView };
   readonly totalDurationMs: number;
+  /** Track ids of the liked songs; the same reference until the likes change. */
+  readonly favoriteTrackIds: ReadonlySet<string>;
 }
 
 export interface UndoHandle {
@@ -138,7 +142,8 @@ function samePlaylists(a: readonly PlaylistSummary[], b: readonly PlaylistSummar
         p.id === q.id &&
         p.name === q.name &&
         p.size === q.size &&
-        p.isActive === q.isActive
+        p.isActive === q.isActive &&
+        p.kind === q.kind
       );
     })
   );
@@ -161,6 +166,8 @@ export class PlayerStore {
   #forbidden = false;
   #snapshot: PlayerSnapshot;
   #songsKey = '';
+  #favoritesKey = '';
+  #favoriteIds: ReadonlySet<string> = new Set<string>();
 
   constructor(deps: PlayerStoreDeps) {
     this.#library = deps.library;
@@ -247,6 +254,11 @@ export class PlayerStore {
    */
   addToPlaylist(playlistId: string, track: Track): void {
     const target = this.#library.get(playlistId);
+    if (target.kind === 'favorites') {
+      // Dropping on Favoritos is a like: never a duplicate entry.
+      if (!this.#library.isFavorite(track.trackId)) this.toggleFavorite(track);
+      return;
+    }
     target.addLast(track);
     if (target.id === this.#active().id) this.#mutated();
     else this.#refresh();
@@ -289,6 +301,42 @@ export class PlayerStore {
     this.#notifier.notify(
       strings.detail.albumAddedToStart(label ?? tracks[0]?.album.name ?? '', tracks.length),
     );
+  }
+
+  // ---- favorites -----------------------------------------------------------------
+
+  /**
+   * Likes or unlikes a track. The first like creates the "Favoritos" playlist; a track is liked
+   * exactly while it is in that playlist. Never switches playlists or interrupts playback,
+   * except that unliking the playing song while Favoritos is active moves on like a removal.
+   */
+  toggleFavorite(track: Track): void {
+    const library = this.#library;
+    if (library.isFavorite(track.trackId)) {
+      const favorites = library.favorites;
+      const removed = favorites?.songs().filter((s) => s.trackId === track.trackId) ?? [];
+      library.unlike(track.trackId);
+      this.#afterFavoritesChanged();
+      for (const song of removed) this.#releaseIfUnreferenced(song);
+      this.#notifier.notify(strings.favorites.removed(track.title));
+    } else {
+      library.like(track, strings.favorites.playlistName);
+      this.#afterFavoritesChanged();
+      this.#notifier.notify(strings.favorites.added(track.title));
+    }
+  }
+
+  /** Likes or unlikes an entry of the active playlist (the player bar's heart). */
+  toggleFavoriteEntry(entryId: string): void {
+    const song = this.#active()
+      .songs()
+      .find((s) => s.entryId === entryId);
+    if (song !== undefined) this.toggleFavorite(song);
+  }
+
+  #afterFavoritesChanged(): void {
+    if (this.#library.favorites?.id === this.#active().id) this.#mutated();
+    else this.#refresh();
   }
 
   // ---- removing, moving ---------------------------------------------------------
@@ -380,6 +428,8 @@ export class PlayerStore {
   }
 
   renamePlaylist(id: string, name: string): void {
+    // Favoritos keeps its name; the UI does not offer renaming it.
+    if (this.#library.get(id).kind === 'favorites') return;
     this.#assertValidName(name);
     this.#library.rename(id, name);
     this.#refresh();
@@ -390,6 +440,7 @@ export class PlayerStore {
   async deletePlaylist(id: string): Promise<boolean> {
     if (this.#library.size <= 1) return false;
     const target = this.#library.get(id);
+    if (target.kind === 'favorites') return false;
     if (target.id === this.#library.active.id) {
       const fallback = this.#library.all().find((p) => p.id !== id);
       if (fallback === undefined) return false;
@@ -594,6 +645,7 @@ export class PlayerStore {
     };
     const totalDurationMs = playlist.totalDurationMs;
     const currentIndex = currentEntryId === null ? -1 : playlist.currentIndex;
+    const favoriteTrackIds = this.#favoriteTrackIds();
     if (
       previous !== null &&
       previous.playlists === playlists &&
@@ -605,7 +657,8 @@ export class PlayerStore {
       previous.player === player &&
       previous.spotify.auth === spotify.auth &&
       previous.spotify.status === spotify.status &&
-      previous.totalDurationMs === totalDurationMs
+      previous.totalDurationMs === totalDurationMs &&
+      previous.favoriteTrackIds === favoriteTrackIds
     ) {
       return previous;
     }
@@ -619,14 +672,30 @@ export class PlayerStore {
       player,
       spotify,
       totalDurationMs,
+      favoriteTrackIds,
     };
+  }
+
+  /** The liked track ids, rebuilt only when the favorites playlist changed. */
+  #favoriteTrackIds(): ReadonlySet<string> {
+    const favorites = this.#library.favorites;
+    const key = favorites === null ? '' : `${favorites.id}:${favorites.version}`;
+    if (key !== this.#favoritesKey) {
+      this.#favoritesKey = key;
+      this.#favoriteIds = this.#library.favoriteTrackIds();
+    }
+    return this.#favoriteIds;
   }
 
   #summaries(previous: readonly PlaylistSummary[] | null): readonly PlaylistSummary[] {
     const activeId = this.#active().id;
-    const next = this.#library
-      .all()
-      .map((p) => ({ id: p.id, name: p.name, size: p.size, isActive: p.id === activeId }));
+    const next = this.#library.all().map((p) => ({
+      id: p.id,
+      name: p.name,
+      size: p.size,
+      isActive: p.id === activeId,
+      kind: p.kind,
+    }));
     return previous !== null && samePlaylists(previous, next) ? previous : next;
   }
 

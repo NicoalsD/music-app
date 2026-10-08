@@ -150,7 +150,16 @@
   outline-offset: var(--focus-offset);
 }
 
+.artistsRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
 .artists {
+  min-width: 0;
   margin: 0;
   font-size: var(--text-lg);
   font-weight: var(--weight-medium);

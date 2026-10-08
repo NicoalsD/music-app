@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { Ellipsis, House, Plus, Search } from 'lucide-react';
+import { Ellipsis, Heart, House, Plus, Search } from 'lucide-react';
 import { usePlayerSnapshot } from '../../state';
 import type { PlayerSnapshot, PlaylistSummary } from '../../state';
 import { Button } from '../components/Button';
@@ -129,6 +129,7 @@ function PlaylistEntry({ playlist, canDelete, onOpen, onRename, onDelete }: Play
     disabled: !dragging,
   });
   const over = dragging && isOver;
+  const isFavorites = playlist.kind === 'favorites';
   return (
     <>
       <button
@@ -144,6 +145,14 @@ function PlaylistEntry({ playlist, canDelete, onOpen, onRename, onDelete }: Play
         <span className={styles.seal}>
           {over ? (
             <Plus size={20} strokeWidth={2} aria-hidden="true" />
+          ) : isFavorites ? (
+            <Heart
+              size={20}
+              strokeWidth={1.5}
+              fill="currentColor"
+              className={styles.heart}
+              aria-hidden="true"
+            />
           ) : playlist.isActive ? (
             <Hanko kanji={strings.sidebar.activeKanji} size={24} />
           ) : null}
@@ -153,25 +162,30 @@ function PlaylistEntry({ playlist, canDelete, onOpen, onRename, onDelete }: Play
           <span className={styles.count}>{over ? strings.dnd.dropOnPlaylist : count}</span>
         </span>
       </button>
-      <Menu>
-        <MenuTrigger asChild>
-          <IconButton
-            label={strings.sidebar.options(playlist.name)}
-            icon={<Ellipsis size={20} strokeWidth={1.5} />}
-            className={styles.more}
-          />
-        </MenuTrigger>
-        <MenuContent align="end">
-          <MenuItem onSelect={onRename}>{strings.playlist.rename}</MenuItem>
-          <MenuItem
-            disabled={!canDelete}
-            title={canDelete ? undefined : strings.playlist.onlyOne}
-            onSelect={onDelete}
-          >
-            {strings.playlist.delete}
-          </MenuItem>
-        </MenuContent>
-      </Menu>
+      {isFavorites ? (
+        // Favoritos builds itself from the hearts: nothing to rename or delete.
+        <span className={styles.moreSpacer} title={strings.favorites.fixedHint} />
+      ) : (
+        <Menu>
+          <MenuTrigger asChild>
+            <IconButton
+              label={strings.sidebar.options(playlist.name)}
+              icon={<Ellipsis size={20} strokeWidth={1.5} />}
+              className={styles.more}
+            />
+          </MenuTrigger>
+          <MenuContent align="end">
+            <MenuItem onSelect={onRename}>{strings.playlist.rename}</MenuItem>
+            <MenuItem
+              disabled={!canDelete}
+              title={canDelete ? undefined : strings.playlist.onlyOne}
+              onSelect={onDelete}
+            >
+              {strings.playlist.delete}
+            </MenuItem>
+          </MenuContent>
+        </Menu>
+      )}
     </>
   );
 }

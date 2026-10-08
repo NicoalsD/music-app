@@ -38,6 +38,10 @@
   min-width: 0;
 }
 
+.favorite {
+  margin-inline-start: calc(var(--space-1) * -1);
+}
+
 .title {
   overflow: hidden;
   font-family: var(--font-display);

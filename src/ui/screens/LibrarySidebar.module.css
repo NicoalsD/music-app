@@ -127,6 +127,16 @@
   flex: none;
 }
 
+/* Keeps Favoritos aligned with the playlists that do have an options button. */
+.moreSpacer {
+  flex: none;
+  width: var(--target-min);
+}
+
+.heart {
+  color: var(--shu);
+}
+
 .footer {
   display: grid;
   gap: var(--space-2);

@@ -4,6 +4,7 @@ export * from './Song';
 export { Node } from './Node';
 export { DoublyLinkedList } from './DoublyLinkedList';
 export { Playlist } from './Playlist';
+export type { PlaylistKind } from './Playlist';
 export type { RepeatMode, RemoveResult, PlaylistParams } from './Playlist';
 export { ShuffleOrder } from './ShuffleOrder';
 export { PlaylistLibrary, DEFAULT_PLAYLIST_NAME } from './PlaylistLibrary';

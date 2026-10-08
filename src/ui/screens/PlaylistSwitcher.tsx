@@ -30,6 +30,7 @@ export function PlaylistSwitcher() {
   const activeName = usePlayerSnapshot(selectActiveName);
   const [dialog, setDialog] = useState<PlaylistDialogState | null>(null);
   const onlyOne = playlists.length <= 1;
+  const activeIsFavorites = playlists.some((p) => p.id === activeId && p.kind === 'favorites');
 
   return (
     <>
@@ -63,12 +64,23 @@ export function PlaylistSwitcher() {
           <MenuItem onSelect={() => setDialog({ kind: 'create' })}>
             {strings.playlist.create}
           </MenuItem>
-          <MenuItem onSelect={() => setDialog({ kind: 'rename', id: activeId, name: activeName })}>
+          {/* Favoritos builds itself from the hearts, so it has no name or lifetime to manage. */}
+          <MenuItem
+            disabled={activeIsFavorites}
+            title={activeIsFavorites ? strings.favorites.fixedHint : undefined}
+            onSelect={() => setDialog({ kind: 'rename', id: activeId, name: activeName })}
+          >
             {strings.playlist.rename}
           </MenuItem>
           <MenuItem
-            disabled={onlyOne}
-            title={onlyOne ? strings.playlist.onlyOne : undefined}
+            disabled={onlyOne || activeIsFavorites}
+            title={
+              activeIsFavorites
+                ? strings.favorites.fixedHint
+                : onlyOne
+                  ? strings.playlist.onlyOne
+                  : undefined
+            }
             onSelect={() => setDialog({ kind: 'delete', id: activeId, name: activeName })}
           >
             {strings.playlist.delete}

@@ -465,6 +465,106 @@ describe('PlayerStore addToPlaylist', () => {
   });
 });
 
+describe('PlayerStore favorites', () => {
+  const favoritesOf = (h: Harness) =>
+    h.store.getSnapshot().playlists.find((p) => p.kind === 'favorites');
+
+  it('the first like creates "Favoritos" pinned first, without switching playlists', async () => {
+    const h = createHarness();
+    seed(h, 'a');
+    h.store.togglePlay();
+    await settle();
+    const before = h.store.getSnapshot();
+
+    h.store.toggleFavorite(makeTrack('a'));
+    await settle();
+
+    const after = h.store.getSnapshot();
+    expect(after.playlists.map((p) => [p.name, p.kind, p.size])).toEqual([
+      [strings.favorites.playlistName, 'favorites', 1],
+      ['Mi lista', 'regular', 1],
+    ]);
+    expect(after.activePlaylistId).toBe(before.activePlaylistId);
+    expect(after.player.status).toBe('playing');
+    expect(after.favoriteTrackIds.has('a')).toBe(true);
+    expect(h.notifier.notices.at(-1)).toBe(strings.favorites.added('Title a'));
+  });
+
+  it('toggling again removes the like and keeps the empty Favoritos playlist', () => {
+    const h = createHarness();
+    h.store.toggleFavorite(makeTrack('a'));
+    h.store.toggleFavorite(makeTrack('a'));
+    const s = h.store.getSnapshot();
+    expect(s.favoriteTrackIds.has('a')).toBe(false);
+    expect(favoritesOf(h)?.size).toBe(0);
+    expect(h.notifier.notices.at(-1)).toBe(strings.favorites.removed('Title a'));
+  });
+
+  it('likes the current song of the active playlist by entry id', () => {
+    const h = createHarness();
+    seed(h, 'a', 'b');
+    h.store.toggleFavoriteEntry(entryIdAt(h, 1));
+    expect(h.store.getSnapshot().favoriteTrackIds).toEqual(new Set(['b']));
+    h.store.toggleFavoriteEntry('missing');
+    expect(h.store.getSnapshot().favoriteTrackIds).toEqual(new Set(['b']));
+  });
+
+  it('removing a song from the active Favoritos list also removes the like', async () => {
+    const h = createHarness();
+    h.store.toggleFavorite(makeTrack('a'));
+    const favoritesId = favoritesOf(h)?.id ?? '';
+    h.store.switchPlaylist(favoritesId);
+    await settle();
+    h.store.remove(entryIdAt(h, 0));
+    expect(h.store.getSnapshot().favoriteTrackIds.has('a')).toBe(false);
+  });
+
+  it('unliking the playing song while Favoritos is active moves on like any removal', async () => {
+    const h = createHarness();
+    h.store.toggleFavorite(makeTrack('a'));
+    h.store.toggleFavorite(makeTrack('b'));
+    h.store.switchPlaylist(favoritesOf(h)?.id ?? '');
+    await settle();
+    h.store.playEntry(entryIdAt(h, 0));
+    await settle();
+    h.store.toggleFavorite(makeTrack('a'));
+    await settle();
+    const s = h.store.getSnapshot();
+    expect(titles(h)).toEqual(['Title b']);
+    expect(s.songs[0]?.isCurrent).toBe(true);
+    expect(s.player.status).toBe('playing');
+  });
+
+  it('dropping a song on Favoritos likes it once instead of duplicating it', () => {
+    const h = createHarness();
+    h.store.toggleFavorite(makeTrack('a'));
+    const favoritesId = favoritesOf(h)?.id ?? '';
+    h.store.addToPlaylist(favoritesId, makeTrack('a'));
+    h.store.addToPlaylist(favoritesId, makeTrack('b'));
+    expect(favoritesOf(h)?.size).toBe(2);
+    expect(h.store.getSnapshot().favoriteTrackIds).toEqual(new Set(['a', 'b']));
+  });
+
+  it('refuses to rename or delete Favoritos without throwing', async () => {
+    const h = createHarness();
+    h.store.toggleFavorite(makeTrack('a'));
+    const favoritesId = favoritesOf(h)?.id ?? '';
+    h.store.renamePlaylist(favoritesId, 'Otra');
+    expect(await h.store.deletePlaylist(favoritesId)).toBe(false);
+    expect(favoritesOf(h)?.name).toBe(strings.favorites.playlistName);
+  });
+
+  it('keeps the same favorites set reference until the likes change', () => {
+    const h = createHarness();
+    h.store.toggleFavorite(makeTrack('a'));
+    const first = h.store.getSnapshot().favoriteTrackIds;
+    h.store.addLast(makeTrack('x'));
+    expect(h.store.getSnapshot().favoriteTrackIds).toBe(first);
+    h.store.toggleFavorite(makeTrack('b'));
+    expect(h.store.getSnapshot().favoriteTrackIds).not.toBe(first);
+  });
+});
+
 describe('PlayerStore local files', () => {
   it('imports accepted files at the end and reports the rejected ones', async () => {
     const h = createHarness();

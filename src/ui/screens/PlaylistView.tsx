@@ -19,6 +19,8 @@ export interface PlaylistViewProps {
 }
 
 const selectSongs = (s: PlayerSnapshot): readonly SongView[] => s.songs;
+const selectFavoritesActive = (s: PlayerSnapshot): boolean =>
+  s.playlists.some((p) => p.isActive && p.kind === 'favorites');
 
 function insertionFor(
   song: SongView,
@@ -50,14 +52,15 @@ function PlaylistBody({ onGoToSearch }: PlaylistViewProps) {
   const { moveEntry, onRowKeyDown } = useEntryMover('list');
   const dropIndex = useInsertionIndex('list');
 
+  const favoritesActive = usePlayerSnapshot(selectFavoritesActive);
   const onPlay = useCallback((entryId: string) => store.playEntry(entryId), [store]);
   const onRemove = useCallback((entryId: string) => void store.remove(entryId), [store]);
 
   if (songs.length === 0) {
     return (
       <EmptyState
-        title={strings.playlist.emptyWaveTitle}
-        body={strings.playlist.emptyWaveBody}
+        title={favoritesActive ? strings.favorites.emptyTitle : strings.playlist.emptyWaveTitle}
+        body={favoritesActive ? strings.favorites.emptyBody : strings.playlist.emptyWaveBody}
         action={
           <div className={styles.emptyActions}>
             <Button variant="primary" onClick={onGoToSearch}>

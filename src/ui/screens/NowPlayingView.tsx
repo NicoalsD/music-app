@@ -17,6 +17,7 @@ import { cx } from '../cx';
 import { strings } from '../i18n/es';
 import { LyricsPanel } from './LyricsPanel';
 import { PlayerProgress } from './PlayerProgress';
+import { FavoriteButton } from './FavoriteButton';
 import { TransportControls } from './TransportControls';
 import { VolumeControl } from './VolumeControl';
 import { shallowEqualOrNull } from './shallowEqual';
@@ -29,6 +30,7 @@ const selectCurrent = (s: PlayerSnapshot) => {
   if (current === undefined) return null;
   return {
     entryId: current.entryId,
+    trackId: current.trackId,
     title: current.title,
     artists: current.artistLabel,
     album: current.albumName,
@@ -169,7 +171,17 @@ export function NowPlayingView({
                   <p className={styles.artists}>{strings.player.nothingPlayingHint}</p>
                 ) : (
                   <>
-                    <p className={styles.artists}>{current.artists}</p>
+                    <div className={styles.artistsRow}>
+                      <p className={styles.artists}>{current.artists}</p>
+                      <FavoriteButton
+                        entry={{
+                          entryId: current.entryId,
+                          trackId: current.trackId,
+                          title: current.title,
+                        }}
+                        size={22}
+                      />
+                    </div>
                     <p className={styles.album}>{current.album}</p>
                   </>
                 )}

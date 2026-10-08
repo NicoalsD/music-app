@@ -92,11 +92,25 @@ describe('TrackResultRow', () => {
     expect(names).toEqual([
       strings.add.playNow,
       strings.add.playNext,
+      strings.favorites.likeShort,
       strings.add.addToStart,
       strings.add.addToEnd,
       strings.add.insertAt,
       strings.add.addToPlaylist,
     ]);
+  });
+
+  it('likes from the context menu and shows the filled heart on the row', async () => {
+    const { h, user } = renderRow();
+    await user.pointer({ keys: '[MouseRight]', target: playButton() });
+    await user.click(await screen.findByRole('menuitem', { name: strings.favorites.likeShort }));
+    expect(h.store.getSnapshot().favoriteTrackIds.size).toBe(1);
+    const [likedId] = [...h.store.getSnapshot().favoriteTrackIds];
+    expect(likedId).toBeDefined();
+    expect(screen.getByRole('button', { name: /de Favoritos$/ })).toHaveAttribute(
+      'data-liked',
+      'true',
+    );
   });
 
   it('plays from the context menu', async () => {

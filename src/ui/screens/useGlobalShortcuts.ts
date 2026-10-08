@@ -69,6 +69,12 @@ export function useGlobalShortcuts({ onFocusSearch, onShowHelp }: ShortcutAction
         case 'R':
           store.cycleRepeat();
           return;
+        case 'l':
+        case 'L': {
+          const current = store.getSnapshot().currentEntryId;
+          if (current !== null) store.toggleFavoriteEntry(current);
+          return;
+        }
         case '/':
           event.preventDefault();
           onFocusSearch();

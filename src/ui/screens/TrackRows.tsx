@@ -12,6 +12,7 @@ import { IconButton } from '../components/IconButton';
 import { ContextMenuContent, ContextMenuRoot, ContextMenuTrigger } from '../components/MenuKit';
 import { formatTime } from '../format';
 import { strings } from '../i18n/es';
+import { FavoriteButton } from './FavoriteButton';
 import { TrackActionsMenu, TrackMenuItems } from './TrackActionsMenu';
 import { useTrackSounding } from './useTrackSounding';
 import styles from './TrackRows.module.css';
@@ -78,6 +79,7 @@ function CatalogRow({ track, leading, meta, actions }: CatalogRowProps) {
           className={styles.row}
           data-playing={isCurrent ? 'true' : 'false'}
           data-dragging={isDragging ? 'true' : 'false'}
+          data-row-hover-scope
           onDoubleClick={onRowDoubleClick}
         >
           <button
@@ -124,6 +126,7 @@ function CatalogRow({ track, leading, meta, actions }: CatalogRowProps) {
             </span>
           </button>
           {isCurrent ? <span className="visually-hidden">{strings.add.nowPlayingTag}</span> : null}
+          <FavoriteButton track={track} reveal="hover" size={18} />
           <span className={`${styles.duration} tabular`}>{formatTime(track.durationMs)}</span>
           <div className={styles.actions}>{actions}</div>
         </div>
