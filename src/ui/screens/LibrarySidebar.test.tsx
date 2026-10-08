@@ -1,6 +1,7 @@
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { makeTrack } from '../../core/test-utils/fakes';
+import { DndUiContext } from '../dnd/dndContext';
 import { strings } from '../i18n/es';
 import { LibrarySidebar } from './LibrarySidebar';
 import type { SidebarSection } from './LibrarySidebar';
@@ -132,5 +133,33 @@ describe('LibrarySidebar', () => {
   it('offers the file import in the footer', () => {
     setup();
     expect(screen.getByRole('button', { name: strings.library.importFiles })).toBeInTheDocument();
+  });
+
+  describe('as a drop target for dragged songs', () => {
+    function renderDragging(activeKind: 'track' | 'entry' | null) {
+      return renderWithStore(
+        <DndUiContext value={{ activeKind, insertion: null, overPlaylistId: null }}>
+          <LibrarySidebar
+            section="home"
+            onGoHome={vi.fn()}
+            onGoSearch={vi.fn()}
+            onOpenPlaylist={vi.fn()}
+          />
+        </DndUiContext>,
+      );
+    }
+
+    it('marks every playlist as ready (dashed outline) while a search song is dragged', () => {
+      renderDragging('track');
+      expect(entry('Mi lista')).toHaveAttribute('data-drop', 'ready');
+    });
+
+    it('stays idle when nothing, or a playlist row, is dragged', () => {
+      const { unmount } = renderDragging(null);
+      expect(entry('Mi lista')).toHaveAttribute('data-drop', 'idle');
+      unmount();
+      renderDragging('entry');
+      expect(entry('Mi lista')).toHaveAttribute('data-drop', 'idle');
+    });
   });
 });
