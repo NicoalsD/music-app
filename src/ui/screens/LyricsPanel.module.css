@@ -1,9 +1,54 @@
+/*
+ * Two variants share one structure and differ only in these custom properties:
+ * 'full' is the Now Playing display type set on the cover-tinted field, 'side' is the compact
+ * column of the shell side panel on normal paper tokens.
+ */
 .panel {
+  --lyric-size: clamp(22px, 2.3vw, 34px);
+  --lyric-weight: var(--weight-medium);
+  --lyric-leading: 1.3;
+  --lyric-gap: 0.32em;
+  --lyric-pad-top: var(--space-4);
+  --lyric-pad-inline: var(--space-5);
+  /* Fade and shrink by distance from the active line (QML-style focus). */
+  --lyric-near-opacity: 0.5;
+  --lyric-mid-opacity: 0.3;
+  --lyric-far-opacity: 0.18;
+  --lyric-near-scale: 0.92;
+  --lyric-mid-scale: 0.86;
+  --lyric-far-scale: 0.82;
+  /* Lines already sung fade a little more than the ones still to come. */
+  --lyric-past-factor: 0.8;
+  --lyric-motion: 480ms;
+
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
   height: 100%;
+}
+
+.panel[data-variant='side'] {
+  --lyric-size: 17px;
+  --lyric-leading: 1.4;
+  --lyric-gap: 0.2em;
+  --lyric-pad-top: var(--space-2);
+  --lyric-pad-inline: var(--space-2);
+  /* Normal paper behind it: dimmed lines must still read as text, not vanish. */
+  --lyric-near-opacity: 0.62;
+  --lyric-mid-opacity: 0.46;
+  --lyric-far-opacity: 0.34;
+  --lyric-near-scale: 0.96;
+  --lyric-mid-scale: 0.93;
+  --lyric-far-scale: 0.91;
+}
+
+.synced {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .scroller {
@@ -12,68 +57,216 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  /* Room above and below so the first and last lines can reach the centre. */
-  padding: 30% var(--space-4);
+  /* No room above: the first lines start at the top instead of below an empty gap. */
+  padding: var(--lyric-pad-top) var(--lyric-pad-inline) 0;
+  scrollbar-width: none;
+  /* Lets the list size its bottom room in units of this scroller's height. */
+  container-type: size;
+}
+
+.scroller::-webkit-scrollbar {
+  display: none;
 }
 
 .scrollerPlain {
-  padding-block: var(--space-4);
+  padding-block: var(--space-5);
 }
 
 .lines {
   display: grid;
-  gap: var(--space-1);
+  gap: var(--lyric-gap);
   margin: 0;
-  padding: 0;
+  /* Room below so the last lines can still reach the centre. */
+  padding: 0 0 50cqh;
   list-style: none;
 }
 
+/*
+ * Lines differ by opacity, scale and a touch of blur that grow with the distance to the active
+ * line, on both sides. Only transform, opacity and filter change, so nothing reflows; scaling
+ * from the left edge keeps the text anchored.
+ */
 .line {
+  --line-opacity: var(--lyric-far-opacity);
+  --line-scale: var(--lyric-far-scale);
+  --line-blur: 0.8px;
+  --line-factor: 1;
+
   display: block;
   width: 100%;
   min-height: var(--target-min);
-  padding: var(--space-2) var(--space-3);
+  padding: 0.1em 0.3em;
   border: 0;
   border-radius: var(--radius-md);
   background: transparent;
-  color: var(--ink-soft);
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: var(--weight-regular);
-  line-height: 1.3;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--lyric-size);
+  font-weight: var(--lyric-weight);
+  line-height: var(--lyric-leading);
   text-align: left;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
   touch-action: manipulation;
-  transition: color var(--duration-fast) var(--ease-out);
+  opacity: calc(var(--line-opacity) * var(--line-factor));
+  filter: blur(var(--line-blur));
+  transform: scale(var(--line-scale));
+  transform-origin: left center;
+  transition:
+    opacity var(--lyric-motion) var(--ease-out),
+    transform var(--lyric-motion) var(--ease-out),
+    filter var(--lyric-motion) var(--ease-out);
 }
 
-.line[aria-current='true'] {
-  color: var(--ink);
-  font-weight: var(--weight-bold);
+.line[data-state='past'],
+.gap[data-state='past'] {
+  --line-factor: var(--lyric-past-factor);
+}
+
+.line[data-distance='0'],
+.gap[data-distance='0'] {
+  --line-opacity: 1;
+  --line-scale: 1;
+  --line-blur: 0px;
+  --line-factor: 1;
+}
+
+.line[data-distance='1'],
+.gap[data-distance='1'] {
+  --line-opacity: var(--lyric-near-opacity);
+  --line-scale: var(--lyric-near-scale);
+  --line-blur: 0px;
+}
+
+.line[data-distance='2'],
+.gap[data-distance='2'] {
+  --line-opacity: var(--lyric-mid-opacity);
+  --line-scale: var(--lyric-mid-scale);
+  --line-blur: 0.4px;
+}
+
+.panel[data-variant='side'] .line {
+  /* Small type on paper: blur would only make it harder to read. */
+  --line-blur: 0px;
+}
+
+.line:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .line:hover {
-    background: var(--ai-wash);
-    color: var(--ink);
+    --line-opacity: 0.92;
+    --line-blur: 0px;
+    --line-factor: 1;
+
+    background: color-mix(in oklab, var(--ink) 8%, transparent);
   }
 }
 
+/* Instrumental gap: three dots in the line's own colour, fading like any other line. */
 .gap {
-  height: var(--space-5);
+  --line-opacity: var(--lyric-far-opacity);
+  --line-scale: var(--lyric-far-scale);
+  --line-factor: 1;
+
+  display: flex;
+  align-items: center;
+  gap: 0.28em;
+  height: calc(var(--lyric-size) * 1.2);
+  padding-inline: 0.35em;
+  color: var(--ink);
+  opacity: calc(var(--line-opacity) * var(--line-factor));
+  transform: scale(var(--line-scale));
+  transform-origin: left center;
+  transition:
+    opacity var(--lyric-motion) var(--ease-out),
+    transform var(--lyric-motion) var(--ease-out);
+}
+
+.dot {
+  width: calc(var(--lyric-size) * 0.2);
+  height: calc(var(--lyric-size) * 0.2);
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.gap[data-state='active'] .dot {
+  animation: dot-breathe 1.6s var(--ease-in-out) infinite;
+}
+
+.gap[data-state='active'] .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.gap[data-state='active'] .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes dot-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 .plain {
   display: grid;
-  gap: var(--space-1);
-  padding-block: var(--space-3);
+  gap: var(--lyric-gap);
 }
 
 .plainLine {
   margin: 0;
   color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
+  font-family: var(--font-ui);
+  font-size: calc(var(--lyric-size) * 0.72);
+  font-weight: var(--weight-regular);
   line-height: 1.5;
+}
+
+.panel[data-variant='side'] .plainLine {
+  font-size: var(--text-md);
+  line-height: 1.5;
+}
+
+.plainGap {
+  height: 0.8em;
+}
+
+/* Shown only while auto-follow is paused by a manual scroll. */
+.follow {
+  position: absolute;
+  bottom: var(--space-4);
+  left: 50%;
+  min-height: var(--target-min);
+  padding: 0 var(--space-5);
+  border: var(--outline-width) solid var(--ink);
+  border-radius: var(--radius-md);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  transform: translateX(-50%);
+  animation: follow-in var(--duration-base) var(--ease-out);
+  touch-action: manipulation;
+}
+
+.follow:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+@keyframes follow-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
 }
 
 .loading {
@@ -105,4 +298,30 @@
   color: var(--ink-soft);
   font-size: var(--text-xs);
   text-align: center;
+}
+
+@media (max-width: 767px) {
+  .panel[data-variant='full'] {
+    --lyric-size: 21px;
+    --lyric-pad-inline: var(--space-3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Keep the fade by distance but drop movement: no scaling, no blur, no animation. */
+  .line,
+  .gap {
+    --line-scale: 1;
+    --line-blur: 0px;
+
+    transition: opacity var(--duration-base) linear;
+  }
+
+  .gap[data-state='active'] .dot {
+    animation: none;
+  }
+
+  .follow {
+    animation: none;
+  }
 }

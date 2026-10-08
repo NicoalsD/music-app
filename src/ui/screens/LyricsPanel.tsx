@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useReducedMotion } from 'motion/react';
 import { activeLineIndex } from '../../core/Lyrics';
 import type { LyricLine } from '../../core/Lyrics';
@@ -9,6 +9,8 @@ import { Spinner } from '../components/Spinner';
 import { cx } from '../cx';
 import { formatTime } from '../format';
 import { strings } from '../i18n/es';
+import { ACTIVE_LINE_POSITION, lineDistance, lineState } from './lyricsLines';
+import type { LineState } from './lyricsLines';
 import { shallowEqualOrNull } from './shallowEqual';
 import styles from './LyricsPanel.module.css';
 
@@ -29,21 +31,47 @@ const selectQuery = (s: PlayerSnapshot) => {
 interface SyncedLineProps {
   index: number;
   line: LyricLine;
-  active: boolean;
+  state: LineState;
+  /** Capped distance to the active line; drives the fade and shrink of neighbours. */
+  distance: number;
   onSeek: (timeMs: number) => void;
 }
 
-/** One synced line. Memoised so a progress tick only re-renders the two lines that change. */
-const SyncedLine = memo(function SyncedLine({ index, line, active, onSeek }: SyncedLineProps) {
+/**
+ * One synced line. Memoised, and it takes the derived `state` and capped `distance` rather than
+ * the active index, so a line change only re-renders the few lines around the active one.
+ */
+const SyncedLine = memo(function SyncedLine({
+  index,
+  line,
+  state,
+  distance,
+  onSeek,
+}: SyncedLineProps) {
   if (line.text === '') {
-    return <li className={styles.gap} data-line-index={index} aria-hidden="true" />;
+    // Instrumental gap: three dots that breathe while it is the current section.
+    return (
+      <li
+        className={styles.gap}
+        data-line-index={index}
+        data-state={state}
+        data-distance={distance}
+        aria-hidden="true"
+      >
+        <span className={styles.dot} />
+        <span className={styles.dot} />
+        <span className={styles.dot} />
+      </li>
+    );
   }
   return (
-    <li data-line-index={index}>
+    <li data-line-index={index} data-state={state}>
       <button
         type="button"
         className={styles.line}
-        aria-current={active ? 'true' : undefined}
+        data-state={state}
+        data-distance={distance}
+        aria-current={state === 'active' ? 'true' : undefined}
         title={strings.lyrics.seekTo(formatTime(line.timeMs))}
         onClick={() => onSeek(line.timeMs)}
       >
@@ -72,15 +100,12 @@ function SyncedLyrics({ lines }: { lines: readonly LyricLine[] }) {
   const pauseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const first = useRef(true);
   const activeRef = useRef(active);
+  const [following, setFollowing] = useState(true);
 
-  const onSeek = useCallback(
-    (timeMs: number) => {
-      // Seeking by clicking a line means the user wants to follow the lyrics again.
-      paused.current = false;
-      store.seek(timeMs);
-    },
-    [store],
-  );
+  const clearPauseTimer = useCallback(() => {
+    if (pauseTimer.current !== null) clearTimeout(pauseTimer.current);
+    pauseTimer.current = null;
+  }, []);
 
   const scrollToActive = useCallback(
     (smooth: boolean) => {
@@ -90,7 +115,8 @@ function SyncedLyrics({ lines }: { lines: readonly LyricLine[] }) {
         `[data-line-index="${activeRef.current}"]`,
       );
       if (target === null || typeof container.scrollTo !== 'function') return;
-      const top = target.offsetTop - container.clientHeight / 2 + target.offsetHeight / 2;
+      const top =
+        target.offsetTop - container.clientHeight * ACTIVE_LINE_POSITION + target.offsetHeight / 2;
       container.scrollTo({ top, behavior: smooth && !reduceMotion ? 'smooth' : 'auto' });
     },
     [reduceMotion],
@@ -103,43 +129,65 @@ function SyncedLyrics({ lines }: { lines: readonly LyricLine[] }) {
     first.current = false;
   }, [active, scrollToActive]);
 
-  useEffect(
-    () => () => {
-      if (pauseTimer.current !== null) clearTimeout(pauseTimer.current);
+  useEffect(() => clearPauseTimer, [clearPauseTimer]);
+
+  /** Follows the lyrics again: clears the pause and re-centres the active line. */
+  const resume = useCallback(() => {
+    paused.current = false;
+    clearPauseTimer();
+    setFollowing(true);
+    scrollToActive(true);
+  }, [clearPauseTimer, scrollToActive]);
+
+  const onSeek = useCallback(
+    (timeMs: number) => {
+      // Seeking by clicking a line means the user wants to follow the lyrics again.
+      paused.current = false;
+      clearPauseTimer();
+      setFollowing(true);
+      store.seek(timeMs);
     },
-    [],
+    [store, clearPauseTimer],
   );
 
   const pauseAutoScroll = useCallback(() => {
     paused.current = true;
-    if (pauseTimer.current !== null) clearTimeout(pauseTimer.current);
+    setFollowing(false);
+    clearPauseTimer();
     pauseTimer.current = setTimeout(() => {
-      paused.current = false;
       pauseTimer.current = null;
-      scrollToActive(true);
+      resume();
     }, MANUAL_SCROLL_PAUSE_MS);
-  }, [scrollToActive]);
+  }, [clearPauseTimer, resume]);
 
   return (
-    <div
-      ref={scroller}
-      className={styles.scroller}
-      data-testid="lyrics-scroller"
-      onWheel={pauseAutoScroll}
-      onTouchMove={pauseAutoScroll}
-    >
-      <ol className={styles.lines}>
-        {lines.map((line, index) => (
-          <SyncedLine
-            // Lines are static for a song, so the index is a stable identity.
-            key={index}
-            index={index}
-            line={line}
-            active={index === active}
-            onSeek={onSeek}
-          />
-        ))}
-      </ol>
+    <div className={styles.synced}>
+      <div
+        ref={scroller}
+        className={styles.scroller}
+        data-testid="lyrics-scroller"
+        onWheel={pauseAutoScroll}
+        onTouchMove={pauseAutoScroll}
+      >
+        <ol className={styles.lines}>
+          {lines.map((line, index) => (
+            <SyncedLine
+              // Lines are static for a song, so the index is a stable identity.
+              key={index}
+              index={index}
+              line={line}
+              state={lineState(index, active)}
+              distance={lineDistance(index, active)}
+              onSeek={onSeek}
+            />
+          ))}
+        </ol>
+      </div>
+      {following ? null : (
+        <button type="button" className={styles.follow} onClick={resume}>
+          {strings.lyrics.follow}
+        </button>
+      )}
     </div>
   );
 }
@@ -149,7 +197,12 @@ function Message({ children }: { children: string }) {
 }
 
 /** Lyrics of the current song with loading, synced, plain, instrumental, empty and error states. */
-export function LyricsPanel() {
+export interface LyricsPanelProps {
+  /** 'full' is the Now Playing column; 'side' is the compact shell side panel. */
+  variant?: 'full' | 'side';
+}
+
+export function LyricsPanel({ variant = 'full' }: LyricsPanelProps = {}) {
   const query = usePlayerSnapshot(selectQuery, shallowEqualOrNull);
   const { status, lyrics, retry } = useLyrics(query);
 
@@ -181,7 +234,7 @@ export function LyricsPanel() {
       <div className={cx(styles.scroller, styles.scrollerPlain)}>
         <div className={styles.plain}>
           {lyrics.lines.map((line, index) => (
-            <p key={index} className={line === '' ? styles.gap : styles.plainLine}>
+            <p key={index} className={line === '' ? styles.plainGap : styles.plainLine}>
               {line}
             </p>
           ))}
@@ -193,7 +246,7 @@ export function LyricsPanel() {
   }
 
   return (
-    <div className={styles.panel}>
+    <div className={styles.panel} data-variant={variant}>
       {body}
       {status === 'idle' ? null : <p className={styles.source}>{strings.lyrics.source}</p>}
     </div>

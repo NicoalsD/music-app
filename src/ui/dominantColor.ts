@@ -23,14 +23,23 @@ interface Bucket {
   weight: number;
 }
 
+/** A colour bucket's average colour with its share of the sampled pixels. */
+export interface RankedColor {
+  readonly rgb: Rgb;
+  /** Fraction (0..1) of the usable pixels that fell into this bucket. */
+  readonly share: number;
+  readonly weight: number;
+}
+
 /**
- * Picks the dominant colour of RGBA pixel data (as from `getImageData`).
+ * Ranks the colours of RGBA pixel data (as from `getImageData`), best first.
  * Pixels are quantised to 4 bits per channel; each bucket scores by its pixel count times
- * the saturation of its colour, so a vivid minority beats a grey majority. Returns the average
- * of the winning bucket, or `null` when there is no coloured, opaque pixel.
+ * the saturation of its colour, so a vivid minority beats a grey majority. Transparent pixels
+ * and near-black or near-white pixels without hue are ignored.
  */
-export function dominantColor(data: ArrayLike<number>): Rgb | null {
+export function rankColors(data: ArrayLike<number>): RankedColor[] {
   const buckets = new Map<number, Bucket>();
+  let total = 0;
   for (let i = 0; i + 3 < data.length; i += 4) {
     const r = data[i] ?? 0;
     const g = data[i + 1] ?? 0;
@@ -47,25 +56,35 @@ export function dominantColor(data: ArrayLike<number>): Rgb | null {
       buckets.set(key, bucket);
     }
     bucket.count += 1;
+    total += 1;
     bucket.r += r;
     bucket.g += g;
     bucket.b += b;
     // Saturation in 0..1 (HSV), with a floor so greys can still win when nothing is vivid.
     bucket.weight += 0.15 + (max === 0 ? 0 : (max - min) / max);
   }
-  let best: Bucket | null = null;
-  for (const bucket of buckets.values()) {
-    if (best === null || bucket.weight > best.weight) best = bucket;
-  }
-  if (best === null) return null;
-  return {
-    r: Math.round(best.r / best.count),
-    g: Math.round(best.g / best.count),
-    b: Math.round(best.b / best.count),
-  };
+  return [...buckets.values()]
+    .sort((a, b) => b.weight - a.weight)
+    .map((bucket) => ({
+      rgb: {
+        r: Math.round(bucket.r / bucket.count),
+        g: Math.round(bucket.g / bucket.count),
+        b: Math.round(bucket.b / bucket.count),
+      },
+      share: bucket.count / total,
+      weight: bucket.weight,
+    }));
 }
 
-function rgbToHsl({ r, g, b }: Rgb): { h: number; s: number; l: number } {
+/**
+ * Picks the dominant colour of RGBA pixel data: the average of the best-scoring bucket of
+ * `rankColors`, or `null` when there is no coloured, opaque pixel.
+ */
+export function dominantColor(data: ArrayLike<number>): Rgb | null {
+  return rankColors(data)[0]?.rgb ?? null;
+}
+
+export function rgbToHsl({ r, g, b }: Rgb): { h: number; s: number; l: number } {
   const rn = r / 255;
   const gn = g / 255;
   const bn = b / 255;
@@ -92,10 +111,13 @@ export function toSunColor(rgb: Rgb): string {
 const SAMPLE_PX = 24;
 
 /**
- * Loads `url` (CORS-enabled) into a tiny canvas and resolves the sun colour, or `null` when the
- * image fails to load, taints the canvas or has no usable colour.
+ * Loads `url` (CORS-enabled) into a tiny canvas and resolves its RGBA pixels, or `null` when the
+ * image fails to load or taints the canvas.
  */
-export function sampleSunColor(url: string): Promise<string | null> {
+export function samplePixels(
+  url: string,
+  size: number = SAMPLE_PX,
+): Promise<ArrayLike<number> | null> {
   return new Promise((resolve) => {
     const image = new Image();
     image.crossOrigin = 'anonymous';
@@ -104,16 +126,15 @@ export function sampleSunColor(url: string): Promise<string | null> {
     image.onload = () => {
       try {
         const canvas = document.createElement('canvas');
-        canvas.width = SAMPLE_PX;
-        canvas.height = SAMPLE_PX;
+        canvas.width = size;
+        canvas.height = size;
         const context = canvas.getContext('2d', { willReadFrequently: true });
         if (context === null) {
           resolve(null);
           return;
         }
-        context.drawImage(image, 0, 0, SAMPLE_PX, SAMPLE_PX);
-        const rgb = dominantColor(context.getImageData(0, 0, SAMPLE_PX, SAMPLE_PX).data);
-        resolve(rgb === null ? null : toSunColor(rgb));
+        context.drawImage(image, 0, 0, size, size);
+        resolve(context.getImageData(0, 0, size, size).data);
       } catch {
         // A tainted canvas throws a SecurityError: keep the fallback colour.
         resolve(null);
@@ -121,4 +142,15 @@ export function sampleSunColor(url: string): Promise<string | null> {
     };
     image.src = url;
   });
+}
+
+/**
+ * Resolves the sun colour of the image at `url`, or `null` when it fails to load, taints the
+ * canvas or has no usable colour.
+ */
+export async function sampleSunColor(url: string): Promise<string | null> {
+  const data = await samplePixels(url);
+  if (data === null) return null;
+  const rgb = dominantColor(data);
+  return rgb === null ? null : toSunColor(rgb);
 }

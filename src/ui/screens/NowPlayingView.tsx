@@ -1,13 +1,18 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
+import type { CSSProperties } from 'react';
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { MicVocal, X } from 'lucide-react';
 import { usePlayerSnapshot } from '../../state';
 import type { PlayerSnapshot } from '../../state';
 import { Artwork } from '../components/Artwork';
+import { pickArtworkUrl } from '../components/artworkSizing';
+import { AmbientBackdrop } from '../ambient/AmbientBackdrop';
+import { PrintBackdrop } from '../ambient/PrintBackdrop';
+import { buildTheme, themeVars } from '../palette/palette';
+import { useCoverPalette } from '../palette/useCoverPalette';
 import { IconButton } from '../components/IconButton';
 import { ShojiPanel } from '../components/ShojiPanel';
-import { shojiClass } from '../theme/shojiClass';
 import { cx } from '../cx';
 import { strings } from '../i18n/es';
 import { LyricsPanel } from './LyricsPanel';
@@ -28,8 +33,12 @@ const selectCurrent = (s: PlayerSnapshot) => {
     artists: current.artistLabel,
     album: current.albumName,
     artwork: current.artwork,
+    // The palette is sampled from the same small cover the player bar loads, so it is cached.
+    paletteUrl: pickArtworkUrl(current.artwork, 'md'),
   };
 };
+
+const selectPlaying = (s: PlayerSnapshot) => s.player.status === 'playing';
 
 export interface NowPlayingViewProps {
   open: boolean;
@@ -40,8 +49,9 @@ export interface NowPlayingViewProps {
 }
 
 /**
- * Full-screen "Reproduciendo ahora": cover, metadata, progress, transport and volume on one
- * shoji panel, synced lyrics on another. The backdrop scene shows through around them.
+ * Full-screen "Reproduciendo ahora": the whole window is a woodblock print tinted by the cover
+ * (flat field, sun and wave from its palette, drifting petals), with cover, metadata, progress,
+ * transport and volume on one tinted shoji panel and the synced lyrics set directly on the field.
  */
 export function NowPlayingView({
   open,
@@ -50,15 +60,22 @@ export function NowPlayingView({
   onToggleLyrics,
 }: NowPlayingViewProps) {
   const current = usePlayerSnapshot(selectCurrent, shallowEqualOrNull);
+  const playing = usePlayerSnapshot(selectPlaying);
   const reduceMotion = useReducedMotion() === true;
   const titleRef = useRef<HTMLHeadingElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
+  // Sampled only while open; the last palette is kept so the closing fade keeps its colours.
+  const palette = useCoverPalette(current?.paletteUrl, open);
+  const theme = useMemo(() => buildTheme(palette), [palette]);
+  const rootStyle = useMemo(() => themeVars(theme) as CSSProperties, [theme]);
 
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Content
           className={styles.root}
+          style={rootStyle}
+          data-scheme={theme.scheme}
           // Lets the global shortcuts (space, arrows) keep working inside this dialog.
           data-now-playing-view=""
           aria-describedby={undefined}
@@ -75,6 +92,9 @@ export function NowPlayingView({
             returnFocus.current = null;
           }}
         >
+          <PrintBackdrop />
+          <AmbientBackdrop theme={theme} playing={playing} />
+
           <RadixDialog.Title className="visually-hidden">
             {strings.nowPlaying.title}
           </RadixDialog.Title>
@@ -82,7 +102,7 @@ export function NowPlayingView({
           <ShojiPanel
             as="header"
             kumiko
-            className={styles.toolbar}
+            className={cx(styles.panel, styles.toolbar)}
             aria-label={strings.nowPlaying.toolbar}
           >
             <IconButton
@@ -104,7 +124,7 @@ export function NowPlayingView({
             <ShojiPanel
               as="section"
               aria-label={strings.nowPlaying.title}
-              className={styles.player}
+              className={cx(styles.panel, styles.player)}
             >
               <div className={styles.stage}>
                 <span className={styles.ring} aria-hidden="true" />
@@ -161,10 +181,7 @@ export function NowPlayingView({
             </ShojiPanel>
 
             {lyricsOpen ? (
-              <section
-                aria-label={strings.lyrics.title}
-                className={cx(shojiClass({ depth: 'raised', inFlow: true }), styles.lyrics)}
-              >
+              <section aria-label={strings.lyrics.title} className={styles.lyrics}>
                 <LyricsPanel />
               </section>
             ) : null}

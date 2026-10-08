@@ -1,0 +1,48 @@
+/* Flat print. Colours are registered custom properties, so every change cross-fades. */
+.print {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background-color: var(--np-field);
+  pointer-events: none;
+}
+
+.sun {
+  position: absolute;
+  top: 46%;
+  left: 24%;
+  width: min(78vmin, 720px);
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background-color: var(--np-sun);
+  transform: translate(-50%, -50%);
+}
+
+/* Seigaiha ground along the bottom edge. */
+.waves {
+  position: absolute;
+  inset: auto 0 0;
+  height: var(--np-wave-height);
+}
+
+.scale circle {
+  fill: var(--np-field);
+  stroke: var(--np-accent);
+  stroke-width: 1.5px;
+}
+
+.grain {
+  position: absolute;
+  inset: 0;
+  background-image: var(--washi-grain);
+  opacity: 0.1;
+  mix-blend-mode: multiply;
+}
+
+@media (max-width: 767px) {
+  .sun {
+    top: 24%;
+    left: 50%;
+    width: 92vmin;
+  }
+}

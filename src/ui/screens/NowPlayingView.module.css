@@ -1,14 +1,54 @@
-/* Full viewport and transparent: the fixed backdrop scene shows around the two shoji panels. */
+/*
+ * The whole window is a print tinted by the cover. The --np-* colours (registered in tokens.css,
+ * set inline from the cover palette) are remapped onto the usual ink tokens, so every control
+ * inside reads the palette text colour and keeps its contrast without knowing about the theme.
+ */
 .root {
+  --np-wave-height: clamp(48px, 9dvh, 88px);
+  --ink: var(--np-text);
+  --ink-soft: var(--np-text-soft);
+  --ink-faint: var(--np-text-soft);
+  --ink-85: color-mix(in oklab, var(--np-text) 85%, transparent);
+  --ink-12: color-mix(in oklab, var(--np-text) 14%, transparent);
+  --ai: var(--np-text);
+  --ai-wash: color-mix(in oklab, var(--np-text) 14%, transparent);
+  --on-ai: var(--np-field);
+  --paper: var(--np-field);
+  --paper-sunk: color-mix(in oklab, var(--np-field) 85%, var(--np-text));
+  --line: color-mix(in oklab, var(--np-text) 35%, var(--np-field));
+  /* The ring uses the text colour, which keeps 7:1 against the field. */
+  --focus-ring: 2px solid var(--np-text);
+
   position: fixed;
   inset: 0;
   z-index: var(--z-dialog);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-4) calc(var(--space-3) + var(--np-wave-height));
+  background-color: var(--np-field);
   color: var(--ink);
   animation: view-in var(--duration-slow) var(--ease-out);
+  /* Registered colours cross-fade when the song (and so the palette) changes. */
+  transition:
+    --np-field var(--duration-sun) var(--ease-out),
+    --np-sun var(--duration-sun) var(--ease-out),
+    --np-accent var(--duration-sun) var(--ease-out),
+    --np-text var(--duration-sun) var(--ease-out),
+    --np-text-soft var(--duration-sun) var(--ease-out),
+    --np-panel var(--duration-sun) var(--ease-out);
+}
+
+/* Panels sit above the print and the petals. */
+.toolbar,
+.layout {
+  position: relative;
+  z-index: 1;
+}
+
+/* Tinted shoji: the glass keeps its blur and grain, the paper becomes the cover colour. */
+.root .panel {
+  background: color-mix(in oklab, var(--np-panel) 90%, transparent);
 }
 
 .root[data-state='closed'] {
@@ -46,9 +86,9 @@
 
 .player {
   display: grid;
-  align-content: center;
+  align-content: safe center;
   justify-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
   min-width: 0;
   min-height: 0;
   padding: var(--space-5);
@@ -63,7 +103,7 @@
 .stage {
   position: relative;
   /* The cover never exceeds 640px nor the height that leaves room for the controls. */
-  width: min(100%, 640px, 44dvh);
+  width: min(100%, 640px, 38dvh);
   margin-inline: auto;
 }
 
@@ -130,10 +170,13 @@
   justify-content: center;
 }
 
+/* Lyrics are set straight on the field, like type on a poster. */
 .lyrics {
+  /* The retry button is a paper-coloured control: give it the tinted panel colour. */
+  --paper-raised: var(--np-panel);
+
   min-width: 0;
   min-height: 0;
-  padding: var(--space-3) 0;
 }
 
 @media (min-width: 1024px) {
@@ -145,7 +188,7 @@
 /* Single column: cover and controls first, lyrics below. The whole layout scrolls. */
 @media (max-width: 767px) {
   .root {
-    padding: var(--space-2);
+    padding: var(--space-2) var(--space-2) calc(var(--space-2) + var(--np-wave-height));
   }
 
   .layout,

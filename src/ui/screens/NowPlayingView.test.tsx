@@ -5,6 +5,11 @@ import { makeTrack } from '../../core/test-utils/fakes';
 import { createHarness } from '../../state/test-utils/harness';
 import { FakeLyricsProvider } from '../../state/test-utils/FakeLyricsProvider';
 import { strings } from '../i18n/es';
+import { buildTheme } from '../palette/palette';
+import { clearCoverPaletteCache } from '../palette/useCoverPalette';
+
+const sample = vi.hoisted(() => vi.fn<(url: string) => Promise<unknown>>());
+vi.mock('../palette/samplePalette', () => ({ samplePalette: sample }));
 
 const lyrics = {
   kind: 'synced',
@@ -28,6 +33,11 @@ function setup() {
   );
   return { ...view, h, provider, user: userEvent.setup() };
 }
+
+beforeEach(() => {
+  clearCoverPaletteCache();
+  sample.mockReset().mockResolvedValue(null);
+});
 
 const dialog = () => screen.getByRole('dialog', { name: strings.nowPlaying.title });
 
@@ -124,5 +134,52 @@ describe('NowPlayingView', () => {
     expect(
       within(dialog()).getByRole('heading', { name: strings.player.nothingPlaying }),
     ).toBeInTheDocument();
+  });
+
+  describe('cover-tinted print', () => {
+    it('paints the fallback palette when the cover cannot be read', async () => {
+      const { user } = setup();
+      await user.click(screen.getByRole('button', { name: strings.nowPlaying.title }));
+      const fallback = buildTheme(null);
+      expect(dialog().style.getPropertyValue('--np-field')).toBe(fallback.field);
+      expect(dialog()).toHaveAttribute('data-scheme', fallback.scheme);
+      expect(within(dialog()).getByTestId('print-backdrop')).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    it('samples the cover while open and tints the dialog with its palette', async () => {
+      const palette = {
+        dominant: { r: 240, g: 220, b: 190 },
+        secondary: { r: 150, g: 200, b: 230 },
+        accent: { r: 230, g: 160, b: 170 },
+      };
+      sample.mockResolvedValue(palette);
+      const { user } = setup();
+      expect(sample).not.toHaveBeenCalled();
+      await user.click(screen.getByRole('button', { name: strings.nowPlaying.title }));
+      const expected = buildTheme(palette);
+      await waitFor(() =>
+        expect(dialog().style.getPropertyValue('--np-field')).toBe(expected.field),
+      );
+      expect(sample).toHaveBeenCalledWith('cover.jpg');
+      expect(dialog().style.getPropertyValue('--np-text')).toBe(expected.text);
+      expect(dialog()).toHaveAttribute('data-scheme', 'light');
+    });
+
+    it('does not mount the ambient scene without WebGL (jsdom)', async () => {
+      const { user } = setup();
+      await user.click(screen.getByRole('button', { name: strings.nowPlaying.title }));
+      expect(within(dialog()).queryByTestId('ambient-backdrop')).toBeNull();
+    });
+
+    it('centres the player when the lyrics column is hidden', async () => {
+      const { user } = setup();
+      await user.click(screen.getByRole('button', { name: strings.nowPlaying.title }));
+      const layout = () => dialog().querySelector('[data-lyrics]');
+      expect(layout()).toHaveAttribute('data-lyrics', 'true');
+      await user.click(
+        within(dialog()).getByRole('button', { name: strings.nowPlaying.hideLyrics }),
+      );
+      expect(layout()).toHaveAttribute('data-lyrics', 'false');
+    });
   });
 });
