@@ -96,6 +96,26 @@ En `src/core/__tests__/invariants.ts` va un helper que verifica las 6 invariante
 | `authentication_error` | pide refresh; si falla → `disconnected` |
 | dispose | `disconnect()`, limpia los listeners y los timers |
 | StrictMode (doble init) | un solo `Spotify.Player` creado |
+| regresión: estados de la canción anterior tras "siguiente" | se ignoran (ni progreso ni play/pausa); solo cuentan los de la canción cargada (o su versión relinkeada) |
+| regresión: `load` con una sesión sonando | pausa la canción anterior de inmediato |
+| regresión: "siguiente" varias veces seguidas (< 700 ms) | se espera 250 ms y solo la última canción llega a Spotify (un único `PUT /me/player/play`) |
+| regresión: seek dentro del último 1,5 s | se trata como fin de canción (`ended`), sin llamar a `seek` del SDK |
+| regresión: posiciones viejas justo después de un seek | se descartan durante 2,5 s (en eventos y en el polling), pero la detección de fin se evalúa antes |
+
+## Matriz: favoritos (`PlaylistLibrary`, persistencia y `PlayerStore`)
+
+| Caso | Esperado |
+|------|----------|
+| primer corazón | crea "Favoritos" (`kind: 'favorites'`) fija en el primer lugar, sin cambiar la playlist activa ni cortar la reproducción |
+| corazón sobre una canción ya favorita | no la duplica |
+| quitar el corazón | elimina todas las entradas de ese `trackId` en Favoritos; la playlist queda aunque esté vacía |
+| quitar la canción desde la lista de Favoritos | también le quita el corazón (una canción es favorita si y solo si está en Favoritos) |
+| quitar el corazón de la canción que suena con Favoritos activa | avanza igual que cualquier eliminación de la actual |
+| soltar una canción sobre Favoritos en la barra lateral | equivale a darle corazón (sin duplicar) |
+| renombrar o eliminar Favoritos | el dominio lo rechaza; el store lo ignora sin lanzar; la UI no ofrece esas acciones |
+| recarga | Favoritos conserva su `kind` y su lugar; datos viejos sin `kind` se leen como playlists normales; dos Favoritos en los datos se rechazan |
+| `favoriteTrackIds` del snapshot | misma referencia mientras no cambien los favoritos |
+| atajo `L` | da o quita el corazón de la canción actual |
 
 ## Matriz: `SpotifyAuth` (fetch simulado, `crypto.subtle` real en jsdom/node)
 

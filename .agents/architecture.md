@@ -154,6 +154,14 @@ sequenceDiagram
   E->>E: aplicar repeat/shuffle → next o replay
 ```
 
+## Favoritos
+
+- **Fuente de verdad única**: Favoritos es una `Playlist` más dentro de la `DoublyLinkedList<Playlist>` de `PlaylistLibrary`, con `kind: 'favorites'`. Una canción es favorita **si y solo si** alguna entrada de esa playlist tiene su `trackId`; no hay un conjunto paralelo que se pueda desincronizar.
+- `PlaylistLibrary.like(track, name)` crea Favoritos con el primer corazón (insertada al inicio de la lista de playlists) y agrega la canción al final; `unlike(trackId)` quita todas sus entradas. Favoritos no se puede renombrar ni eliminar, y solo puede haber una.
+- `PlayerStore.toggleFavorite(track)` / `toggleFavoriteEntry(entryId)` nunca cambian la playlist activa ni cortan la reproducción; si Favoritos es la activa, avisan al `PlayerEngine` como cualquier otra mutación. El snapshot expone `favoriteTrackIds` (misma referencia mientras no cambie) y `PlaylistSummary.kind`.
+- Persistencia: cada playlist guarda su `kind`; los datos anteriores, sin `kind`, se leen como playlists normales.
+- UI: `FavoriteButton` (barra, Reproduciendo ahora, filas) y los menús; la etiqueta dice lo que hará el botón ("Agregar … a Favoritos" / "Quitar … de Favoritos") y el estado cambia también la forma (corazón relleno).
+
 ## Letras (LRCLIB)
 
 Spotify Web API no tiene un endpoint público de letras, así que las letras vienen de [LRCLIB](https://lrclib.net), que es gratuito, no pide API key y responde con `Access-Control-Allow-Origin: *`. Las piezas se reparten así:
