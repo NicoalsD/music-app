@@ -17,6 +17,10 @@ export const SPOTIFY_SCOPES = [
   'user-read-private',
   'user-read-playback-state',
   'user-modify-playback-state',
+  // Personal home feed: top items, recently played and saved tracks.
+  'user-top-read',
+  'user-read-recently-played',
+  'user-library-read',
 ].join(' ');
 export const VERIFIER_STORAGE_KEY = 'music-app:v1:spotify-pkce-verifier';
 export const STATE_STORAGE_KEY = 'music-app:v1:spotify-pkce-state';

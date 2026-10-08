@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './ui/theme/tokens.css';
 import './ui/theme/global.css';
 import { App } from './app/App';
+import { FeedProviderScope } from './state';
 import { createApp } from './app/createApp';
 
 // The runtime is built once at module scope, outside React, so StrictMode's
@@ -18,7 +19,9 @@ const root = document.getElementById('root');
 if (root) {
   createRoot(root).render(
     <StrictMode>
-      <App store={app.store} lyricsProvider={app.lyricsProvider} />
+      <FeedProviderScope provider={app.feedProvider}>
+        <App store={app.store} lyricsProvider={app.lyricsProvider} />
+      </FeedProviderScope>
     </StrictMode>,
   );
 }

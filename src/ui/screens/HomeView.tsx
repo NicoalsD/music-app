@@ -1,5 +1,7 @@
 import { Pause, Play } from 'lucide-react';
-import { usePlayerSnapshot, useStore } from '../../state';
+import type { Clock } from '../../core/ports';
+import type { PersonalFeedProvider } from '../../providers/PersonalFeedProvider';
+import { useFeedProvider, useHomeFeed, usePlayerSnapshot, useStore } from '../../state';
 import type { PlayerSnapshot, PlaylistSummary, SongView } from '../../state';
 import { Artwork } from '../components/Artwork';
 import { Button } from '../components/Button';
@@ -10,7 +12,9 @@ import { Reveal, RevealList } from '../components/Reveal';
 import { ShojiPanel } from '../components/ShojiPanel';
 import { strings } from '../i18n/es';
 import { RECENT_COUNT, greetingFor } from './homeData';
+import { ArtistTile, SectionGate, Shelf, TrackTile } from './HomeShelves';
 import { ImportFilesButton } from './ImportFilesButton';
+import { TrackResultRow } from './TrackRows';
 import styles from './HomeView.module.css';
 
 export interface HomeViewProps {
@@ -19,12 +23,19 @@ export interface HomeViewProps {
   onGoToSearch: () => void;
   /** Injected for tests; defaults to the current hour. */
   hour?: number;
+  /** Opens an artist detail. When absent, artists are shown without a link. */
+  onOpenArtist?: (id: string) => void;
+  /** Overrides the provider from the feed scope (tests). */
+  feedProvider?: PersonalFeedProvider | null;
+  /** Injected for tests; drives the feed cache expiry. */
+  clock?: Clock;
 }
 
 const selectPlaylists = (s: PlayerSnapshot): readonly PlaylistSummary[] => s.playlists;
 const selectSongs = (s: PlayerSnapshot): readonly SongView[] => s.songs;
 const selectCurrentIndex = (s: PlayerSnapshot): number => s.currentIndex;
 const selectActiveId = (s: PlayerSnapshot): string => s.activePlaylistId;
+const selectLoggedIn = (s: PlayerSnapshot): boolean => s.spotify.auth === 'logged-in';
 const selectPlaying = (s: PlayerSnapshot): boolean =>
   s.player.status === 'playing' || s.player.status === 'loading';
 
@@ -32,8 +43,25 @@ const selectPlaying = (s: PlayerSnapshot): boolean =>
  * Home: a greeting, the song to continue with, the user's playlists as tiles and the latest
  * additions. Built only from local store state (Spotify has no browse endpoints for this app).
  */
-export function HomeView({ onOpenPlaylist, onGoToSearch, hour }: HomeViewProps) {
+export function HomeView({
+  onOpenPlaylist,
+  onGoToSearch,
+  hour,
+  onOpenArtist,
+  feedProvider,
+  clock,
+}: HomeViewProps) {
   const store = useStore();
+  const scopedProvider = useFeedProvider();
+  const loggedIn = usePlayerSnapshot(selectLoggedIn);
+  const feed = useHomeFeed(
+    feedProvider === undefined ? scopedProvider : feedProvider,
+    loggedIn,
+    clock,
+  );
+  const needsReconnect = [feed.recent, feed.topTracks, feed.topArtists, feed.saved].some(
+    (section) => section.status === 'needsReconnect',
+  );
   const playlists = usePlayerSnapshot(selectPlaylists);
   const songs = usePlayerSnapshot(selectSongs);
   const currentIndex = usePlayerSnapshot(selectCurrentIndex);
@@ -107,6 +135,85 @@ export function HomeView({ onOpenPlaylist, onGoToSearch, hour }: HomeViewProps) 
               </div>
             </section>
           </Reveal>
+        )}
+
+        {loggedIn ? (
+          <>
+            {needsReconnect ? (
+              <EmptyState
+                title={strings.home.reconnectTitle}
+                body={strings.home.reconnectBody}
+                action={
+                  <Button variant="primary" onClick={() => void store.login()}>
+                    {strings.home.reconnectAction}
+                  </Button>
+                }
+              />
+            ) : null}
+            <SectionGate title={strings.home.feedRecentTitle} section={feed.recent}>
+              {(tracks) => (
+                <Shelf title={strings.home.feedRecentTitle}>
+                  {tracks.map((track) => (
+                    <TrackTile
+                      key={track.trackId}
+                      track={track}
+                      onPlay={(t) => store.playNow(t)}
+                      onAddToEnd={(t) => store.addLast(t)}
+                    />
+                  ))}
+                </Shelf>
+              )}
+            </SectionGate>
+            <SectionGate title={strings.home.feedTopTracksTitle} section={feed.topTracks}>
+              {(tracks) => (
+                <section className={styles.section} aria-labelledby="home-top-tracks">
+                  <h3 id="home-top-tracks" className={styles.sectionTitle}>
+                    {strings.home.feedTopTracksTitle}
+                  </h3>
+                  <ul className={styles.trackList}>
+                    {tracks.map((track) => (
+                      <li key={track.trackId}>
+                        <TrackResultRow track={track} />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </SectionGate>
+            <SectionGate title={strings.home.feedTopArtistsTitle} section={feed.topArtists}>
+              {(artists) => (
+                <Shelf title={strings.home.feedTopArtistsTitle}>
+                  {artists.map((artist) => (
+                    <ArtistTile key={artist.id} artist={artist} onOpen={onOpenArtist} />
+                  ))}
+                </Shelf>
+              )}
+            </SectionGate>
+            <SectionGate title={strings.home.feedSavedTitle} section={feed.saved}>
+              {(tracks) => (
+                <Shelf title={strings.home.feedSavedTitle}>
+                  {tracks.map((track) => (
+                    <TrackTile
+                      key={track.trackId}
+                      track={track}
+                      onPlay={(t) => store.playNow(t)}
+                      onAddToEnd={(t) => store.addLast(t)}
+                    />
+                  ))}
+                </Shelf>
+              )}
+            </SectionGate>
+          </>
+        ) : (
+          <EmptyState
+            title={strings.home.connectTitle}
+            body={strings.home.connectBody}
+            action={
+              <Button variant="primary" onClick={() => void store.login()}>
+                {strings.home.connectAction}
+              </Button>
+            }
+          />
         )}
 
         <Reveal>

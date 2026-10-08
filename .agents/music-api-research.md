@@ -33,7 +33,8 @@
 3. redirect → https://accounts.spotify.com/authorize?
      response_type=code&client_id=…&redirect_uri=…&code_challenge_method=S256
      &code_challenge=…&state=<random>&scope=streaming user-read-email user-read-private
-     user-read-playback-state user-modify-playback-state
+     user-read-playback-state user-modify-playback-state user-top-read
+     user-read-recently-played user-library-read
 4. vuelve a la raíz: /?code=…&state=…  → verificar state
 5. POST https://accounts.spotify.com/api/token  (x-www-form-urlencoded)
      grant_type=authorization_code&code=…&redirect_uri=…&client_id=…&code_verifier=…
@@ -44,6 +45,21 @@
 - El access token se guarda en memoria y el refresh token en `localStorage`. Es un riesgo aceptable para un proyecto educativo; está documentado.
 - El refresh se hace de forma proactiva 60 s antes de que expire, y reactiva ante un 401, con **un solo** reintento.
 - Hay que quitar `?code=` de la URL con `history.replaceState` después del intercambio.
+
+### Inicio personalizado (recomendaciones)
+En modo Development ya no existen `browse/new-releases`, categorías, playlists destacadas, `artist top-tracks`, `/recommendations` ni artistas relacionados. Para que el Inicio no quede vacío se usan los endpoints personales que **siguen disponibles** (interfaz `PersonalFeedProvider`, clase `SpotifyPersonalFeed`, hook `useHomeFeed`):
+
+| Sección de Inicio | Endpoint | Scope |
+|---|---|---|
+| Escuchado recientemente | `GET /v1/me/player/recently-played?limit=10` (se quitan repetidas por id, se conserva el orden) | `user-read-recently-played` |
+| Tus canciones más escuchadas | `GET /v1/me/top/tracks?time_range=medium_term&limit=10` | `user-top-read` |
+| Tus artistas | `GET /v1/me/top/artists?time_range=medium_term&limit=10` | `user-top-read` |
+| Tus me gusta | `GET /v1/me/tracks?limit=10` | `user-library-read` |
+
+- Se usa `limit=10` en todas, por el tope reducido del modo Development.
+- Cada sección se pide y falla por separado: un 403 (falta el scope) da `needsReconnect`, un 404 da `unavailable`, y cualquier otro error se muestra con "Reintentar" solo en esa sección.
+- **Reconexión**: las sesiones iniciadas antes de añadir estos tres scopes tienen un token sin permiso, y Spotify responde 403. Inicio lo detecta y muestra "Vuelve a conectar Spotify para ver tus recomendaciones" con un botón que vuelve a ejecutar el login (`store.login()`); basta con aceptar los nuevos permisos una vez. La búsqueda y la reproducción siguen funcionando con el token viejo.
+- Los datos se guardan en memoria durante la sesión y se vuelven a pedir si pasaron más de 5 minutos al volver a Inicio. Con la sesión cerrada no se hace ninguna petición.
 
 ### Web Playback SDK
 ```html

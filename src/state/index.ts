@@ -24,3 +24,10 @@ export {
   useLyricsFrom,
 } from './useLyrics';
 export type { LyricsStatus, UseLyricsResult, LyricsProviderProps } from './useLyrics';
+export {
+  useHomeFeed,
+  FeedProviderScope,
+  useFeedProvider,
+  FEED_CACHE_TTL_MS,
+} from './home/useHomeFeed';
+export type { HomeFeed, FeedSection, FeedSectionStatus } from './home/useHomeFeed';
