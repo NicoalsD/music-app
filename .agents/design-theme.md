@@ -72,7 +72,7 @@ Lo pidió el usuario: un efecto de transparencia o *liquid glass* integrado al t
 - **Parallax** muy leve con `useScroll`: el sol baja 24 px y la ola sube 16 px a lo largo de todo el scroll. Con `prefers-reduced-motion` queda estático.
 - Opcional: el color del sol toma el tono dominante de la carátula actual (se extrae del canvas), con una transición de 600 ms.
 
-**Panel shōji** (`.shoji`, para los paneles de Buscar y Mi lista, el reproductor, los menús, los diálogos y los toasts):
+**Panel shōji** (`.shoji`, para los paneles de Buscar, Biblioteca y Reproduciendo ahora, el reproductor, los menús, los diálogos y los toasts):
 ```css
 .shoji {
   background: color-mix(in oklab, var(--paper-raised) 62%, transparent);
@@ -138,7 +138,87 @@ Principios: **el papel no rebota**. Movimientos cortos, con *ease-out*, que pare
 
 ## 7. Layout
 
-- **Escritorio**: la cabecera es una franja de papel con la ola *seigaiha*, el logo (un *hanko* con 音) y el buscador. Debajo hay dos columnas: **Buscar** (filtros Todo, Canciones, Artistas y Álbumes) y **Mi lista** (la lista doble con linternas). La barra del reproductor está fija abajo y tiene la carátula enmarcada, los controles y el cable con la golondrina.
-- **Móvil**: tabs "Buscar" y "Mi lista" y un mini reproductor flotante de papel.
-- **Detalle de artista y de álbum**: es un panel que **reemplaza** la columna de búsqueda, con un botón "← Volver". Así no se pierde de vista "Mi lista".
+La estructura se inspira en el reproductor web de Spotify y en los clientes minimalistas de escritorio: una cabecera, una barra lateral con la biblioteca, un panel principal que cambia de vista y un reproductor fijo abajo. La forma es la de siempre, pero el papel, las etiquetas y los sellos son los del tema.
+
+**Vistas del panel principal** (un único estado de navegación, sin rutas de servidor):
+
+| Vista | Qué muestra |
+|-------|-------------|
+| `home` | Continuar escuchando, Tus playlists y Agregadas recientemente. Se construye **solo con estado local**, porque los endpoints de exploración y recomendaciones de Spotify están restringidos para apps nuevas. |
+| `search` | El buscador con los filtros Todo, Canciones, Artistas y Álbumes. |
+| `playlist` | La lista doble de la playlist activa, con las linternas, el reordenado arrastrando y el menú por canción. |
+| `album` | Las canciones del álbum y "Agregar álbum completo". Tiene el botón "Volver". |
+| `artist` | Los álbumes del artista. Tiene el botón "Volver". |
+
+**Escritorio (desde 1024 px)**
+- **Cabecera**: una franja de papel con la ola *seigaiha* en el borde inferior. De izquierda a derecha: el logo (un *hanko* con 音), el botón "Inicio", el buscador centrado (con su etiqueta visible o accesible), el estado de la conexión con Spotify (siempre con texto, nunca solo con color) y el botón de atajos de teclado.
+- **Barra lateral "Biblioteca"** (unos 280 px, con el kanji 一覧 decorativo en el título):
+  - Navegación con "Inicio" y "Buscar". La vista activa lleva `aria-current="page"`.
+  - La lista de playlists. La playlist activa lleva el sello *hanko* y `aria-current="true"`.
+  - El botón "Crear", que abre un diálogo para dar el nombre.
+  - Un botón de menú por playlist (`aria-label` con el nombre) con "Renombrar" y "Eliminar". Si es la única playlist, "Eliminar" queda deshabilitada con el motivo escrito en el menú.
+  - "Importar archivos" al pie, con el mismo flujo que el arrastrar y soltar.
+- **Panel principal**: ocupa el resto del ancho y tiene su propio scroll. La cabecera y la barra lateral no se desplazan.
+- **Reproductor fijo abajo** (unos 88 px): a la izquierda, la carátula enmarcada, el título y los artistas. En el centro, los controles y el cable de progreso con su golondrina. A la derecha, el volumen con mute, el botón **"Letra"** y el botón **"Reproduciendo ahora"**, que expande la vista de la sección 7.1.
+
+**Tableta (768 a 1023 px)** *(propuesta)*
+- La barra lateral se reduce a un riel de 64 px con solo iconos. Cada icono tiene `aria-label` y un *tooltip* de Radix.
+- Desde el icono "Biblioteca" se abre la lista de playlists como panel superpuesto, con el mismo contenido que la barra lateral.
+- El panel principal ocupa el resto del ancho. Las columnas de resultados pasan de tres a dos.
+
+**Móvil (menos de 768 px)**
+- No hay barra lateral. La cabecera queda compacta: logo y estado de Spotify. El buscador vive en la vista "Buscar".
+- **Navegación inferior** con tres destinos: Inicio, Buscar y Biblioteca. Va **encima del mini reproductor**, que queda pegado al borde inferior. "Biblioteca" muestra la misma lista de playlists que la barra lateral.
+- El mini reproductor es una tira de papel con la carátula pequeña, el título, play y pausa, y el botón "Reproduciendo ahora".
+- El contenido tiene padding inferior suficiente para que la navegación y el mini reproductor no tapen el último elemento.
+- Los objetivos táctiles miden al menos 44 px. El margen lateral es de 16 px y no hay desplazamiento horizontal a 360 px de ancho.
+
+**Reglas comunes**
+- **Volver**: al abrir un álbum o un artista desde los resultados, "Volver" regresa a la vista anterior con su filtro, su texto de búsqueda y su posición de scroll. Si no hay vista anterior, "Volver" lleva a "Buscar".
+- **Estados**: cada vista tiene estado vacío (con una acción: buscar o importar), cargando y error (con reintentar). Sin login de Spotify, el panel de búsqueda explica qué falta y no muestra resultados vacíos.
 - Los márgenes son generosos, como el paspartú de un grabado: 24 a 32 px en escritorio y 16 px en móvil.
+
+## 7.1 Reproduciendo ahora
+
+Es la vista de inmersión de la canción actual, inspirada en la vista de reproducción del cliente QML de Spotify. Se abre desde el botón "Reproduciendo ahora" de la barra. El botón "Letra" la abre con el panel de letra en primer plano. En escritorio ocupa el panel principal y la barra inferior sigue visible. En móvil ocupa toda la pantalla.
+
+**Apertura y cierre**
+- Se cierra con **Esc** o con el botón "Cerrar" (con `aria-label`). Al cerrar, el foco vuelve al botón que la abrió.
+- Al abrir, el foco entra en el título de la canción.
+- La vista se mantiene sincronizada con la canción actual. Si la canción cambia, la carátula, la letra y el fondo cambian con ella.
+
+**Columna izquierda (escritorio: unos 45 % del ancho)**
+- **Carátula grande** de hasta 640 px, dentro de un paspartú de papel de 4 px y con un contorno de 1.5 px en `--ink`. Si no tiene imagen, va el respaldo *hanko* de la sección 4. El `alt` es "Portada de {álbum}".
+- **Anillo decorativo** alrededor de la carátula: un trazo fino en `--ink`, con `aria-hidden="true"`. Es solo decoración. Spotify protege el audio con DRM, así que no hay visualizador real y el anillo **no reacciona al sonido**. Tampoco gira ni pulsa en bucle.
+- **Título** en Shippori Mincho 600 (32 px en móvil y 44 px en escritorio), los **artistas** en Zen Kaku Gothic 500 y el **álbum** en `--ink-soft`. El título es la región con `aria-live="polite"` de "Reproduciendo ahora".
+- **Progreso**: el mismo cable de tinta con la golondrina como control. Es un Slider de Radix, así que se opera con las flechas. Los tiempos usan `tabular-nums`.
+- **Controles**: anterior, play y pausa, siguiente, repeat y shuffle en una fila, con el volumen y el mute debajo. Todos los botones de solo icono tienen `aria-label`.
+
+**Columna derecha (escritorio) o debajo de la carátula (móvil)**
+- **Letra** sobre un panel shōji (sección 3.1), con el texto de atribución "Letras: LRCLIB" en `--ink-soft`.
+- **Estados de la letra**:
+  - *Cargando*: el texto "Buscando la letra…", sin spinner en bucle.
+  - *Sincronizada*: las líneas con su tiempo.
+  - *Texto plano*: el texto completo, desplazable, sin resaltado y sin seek.
+  - *Instrumental*: "Canción instrumental".
+  - *No disponible*: "No encontramos letra para esta canción". No ofrece reintentar, porque la respuesta fue "no existe".
+  - *Error*: "No se pudo cargar la letra", con el botón "Reintentar".
+- **Líneas sincronizadas**:
+  - La línea activa va en `--ink`, en peso 700 y con `aria-current="true"`. Las demás van en `--ink-soft`, en peso 400.
+  - El desplazamiento automático centra la línea activa. Con `prefers-reduced-motion` el salto es instantáneo.
+  - Si el usuario se desplaza a mano por la letra, el auto-desplazamiento se pausa durante unos 4 s y luego vuelve a seguir la línea activa.
+  - Cada línea es un botón. Un clic o Enter sobre ella hace seek a su tiempo. Las líneas de texto plano no son botones.
+  - No hay `aria-live` por línea, para no leer toda la letra mientras suena. El anuncio queda en el título.
+
+**Fondo (escena de la sección 3.1)**
+- El **sol** toma el tono dominante de la carátula actual. Ese tono se extrae de un canvas pequeño, se cuantiza y se aplica como un color **plano**, sin degradados ni blur.
+- La transición de color dura 600 ms.
+- La carátula **no** se difumina como fondo.
+- Si no hay carátula o la extracción falla, el sol vuelve a `--shu`.
+- El color llega por la variable CSS `--sun`, que se define en el contenedor de la vista. Es la única excepción a la regla de "ningún color directo en un componente": solo colorea el sol y nunca el texto.
+- Todo el texto va sobre el panel shōji, nunca directamente sobre el sol, para mantener el contraste de 4.5:1.
+
+**Animación**
+- La entrada de la vista es un fundido de opacidad con un desplazamiento de hasta 8 px, en 300 ms. Con `prefers-reduced-motion` queda solo el fundido.
+- El cambio de carátula es un fundido cruzado de 300 ms (sección 6).
+- No hay animaciones en bucle dentro de la vista.

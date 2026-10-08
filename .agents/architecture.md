@@ -5,18 +5,25 @@
 ```mermaid
 flowchart TD
   UI["ui/ — Componentes React<br/>(solo presentación)"]
+  NP["ui/ — NowPlayingView + LyricsPanel<br/>(solo presentación)"]
   ST["state/ — PlayerStore<br/>(observable + useSyncExternalStore)"]
+  LH["state/ — useLyrics<br/>(AbortController, último gana)"]
   PL["player/ — PlayerEngine"]
   AO{{"AudioOutput (interfaz)"}}
   SO["SpotifyOutput<br/>Web Playback SDK"]
   HO["Html5AudioOutput<br/>&lt;audio&gt;"]
   CORE["core/ — DoublyLinkedList&lt;Song&gt;, Playlist, Song, Node"]
+  LYR["core/ — Lyrics<br/>parseLrc · activeLineIndex"]
   PR{{"MusicProvider (interfaz)"}}
   SP["SpotifyProvider"]
   LF["LocalFileProvider"]
+  LP{{"LyricsProvider (interfaz)"}}
+  LR["LrcLibLyricsProvider<br/>(fetch inyectado, caché en memoria)"]
   AU["auth/ — SpotifyAuth (PKCE)"]
 
+  UI --> NP
   UI -->|acciones / snapshots| ST
+  NP -->|letra de la canción actual| LH
   ST --> PL
   ST --> CORE
   ST --> PR
@@ -24,8 +31,12 @@ flowchart TD
   PL --> AO
   AO --> SO
   AO --> HO
+  LH --> LP
+  LH --> LYR
   PR --> SP
   PR --> LF
+  LR -->|implementa| LP
+  LR --> LYR
   SP --> AU
   SO --> AU
 ```
@@ -142,6 +153,85 @@ sequenceDiagram
   O-->>E: emit("ended")
   E->>E: aplicar repeat/shuffle → next o replay
 ```
+
+## Letras (LRCLIB)
+
+Spotify Web API no tiene un endpoint público de letras, así que las letras vienen de [LRCLIB](https://lrclib.net), que es gratuito, no pide API key y responde con `Access-Control-Allow-Origin: *`. Las piezas se reparten así:
+
+- **`core/Lyrics.ts`** (dominio puro, sin fetch ni React): `parseLrc(lrc)` convierte el texto LRC en `LyricLine[]`, y `activeLineIndex(lines, positionMs)` busca la línea activa con búsqueda binaria.
+- **`providers/LyricsProvider.ts`**: la interfaz `LyricsProvider` (Strategy), con `find(query, signal?)`, que resuelve `null` cuando no hay letra, y el error `LyricsRequestError` (con `status`) para los fallos.
+- **`providers/LrcLibLyricsProvider.ts`**: implementa la interfaz. Recibe `fetch` por constructor, tiene caché en memoria y valida la respuesta de LRCLIB antes de usarla.
+- **`state/useLyrics.ts`**: el hook que pide la letra de la canción actual. Cancela la petición anterior con `AbortController`, así que solo gana la última canción.
+- **`ui/` (`NowPlayingView`, `LyricsPanel`)**: solo pinta los estados y llama a `onSeek`. No conoce LRCLIB.
+
+```ts
+// core/Lyrics.ts
+interface LyricLine { readonly timeMs: number; readonly text: string }
+type Lyrics =
+  | { kind: 'synced'; lines: readonly LyricLine[] }
+  | { kind: 'plain'; lines: readonly string[] }
+  | { kind: 'instrumental' };
+```
+
+```mermaid
+classDiagram
+  class LyricLine {
+    +timeMs: number
+    +text: string
+  }
+  class LyricsProvider {
+    <<interface>>
+    +find(query, signal?) Promise~Lyrics | null~
+  }
+  class LyricsRequestError {
+    +status: number
+  }
+  class LrcLibLyricsProvider {
+    -fetch: FetchLike
+    -cache: Map~string, Lyrics | null~
+    +find(query, signal?) Promise~Lyrics | null~
+  }
+  LyricsProvider <|.. LrcLibLyricsProvider
+  LrcLibLyricsProvider ..> LyricLine
+  LrcLibLyricsProvider ..> LyricsRequestError
+```
+
+## Secuencia: cambia la canción actual (letra)
+
+```mermaid
+sequenceDiagram
+  participant S as PlayerStore
+  participant H as useLyrics
+  participant P as LrcLibLyricsProvider
+  participant L as LRCLIB
+  participant V as NowPlayingView
+  S-->>H: la canción actual cambió
+  H->>H: abort() de la petición anterior
+  alt no hay canción
+    H-->>V: idle
+  else caché con la misma clave
+    P-->>H: Lyrics (sin red)
+  else
+    H->>P: find(query, signal)
+    P->>L: GET /api/get (título, artista, álbum, duración)
+    alt 404
+      P->>L: GET /api/search (título, artista)
+      P->>P: elegir la duración más cercana (<= 3 s)
+    end
+    L-->>P: JSON (syncedLyrics, plainLyrics o instrumental)
+    P->>P: parseLrc sobre syncedLyrics
+    P-->>H: Lyrics o null
+  end
+  H-->>V: LyricsStatus (loading, ready, empty o error)
+  V->>V: subscribeProgress, activeLineIndex(lines, positionMs)
+  V-->>V: solo cambia el atributo aria-current de la línea activa
+```
+
+Reglas de esta secuencia:
+- Un `AbortError` **no** es un error para la UI. El hook lo ignora y tampoco se guarda en caché.
+- Se guardan en caché los resultados `synced`, `plain`, `instrumental` y `null` (no encontrado), con clave normalizada (título, artista y duración redondeada). Los errores de red o de HTTP **no** se guardan.
+- `activeLineIndex` se calcula en cada tick del progreso, con la misma suscripción `subscribeProgress` que la barra. La lista de la letra no se vuelve a renderizar: solo cambia la línea marcada.
+- Las pruebas usan `fetch` simulado. Ningún test de `providers/` hace red real.
 
 ## Estado expuesto a React (snapshot inmutable)
 

@@ -121,6 +121,71 @@ En `src/core/__tests__/invariants.ts` va un helper que verifica las 6 invariante
 - Al eliminar definitivamente → `URL.revokeObjectURL` se llama una vez.
 - `ended` del `<audio>` → `ended` del output.
 
+## Matriz: `parseLrc` (core, función pura)
+
+| Caso | Esperado |
+|------|----------|
+| `[01:02.50]texto` | una línea con `timeMs` 62500 |
+| marca de tres decimales `[00:01.234]` | 1234 ms exactos |
+| marca con uno o dos decimales `[00:01.5]` | 1500 ms (el decimal se interpreta como fracción de segundo) |
+| varias marcas en una línea `[00:10.00][01:30.00]texto` | dos entradas con el mismo texto |
+| marca sin texto `[00:10.00]` | se conserva con texto vacío (pausa instrumental) |
+| `[offset:+500]` | todos los tiempos se restan 500 ms, sin bajar de 0 |
+| etiquetas de metadatos `[ar:]`, `[ti:]`, `[al:]`, `[length:]` | se ignoran y no generan líneas |
+| líneas en blanco o sin marca válida | se ignoran, sin lanzar error |
+| marca inválida `[99:99.99]` o `[aa:bb]` | se ignora |
+| archivo con fin de línea CRLF | igual que con LF |
+| texto con `[` o `]` dentro | se conserva el texto completo tras la última marca |
+| archivo desordenado | la salida queda ordenada por `timeMs` (orden estable) |
+| entrada vacía | lista vacía |
+| **Propiedad (fast-check):** generar líneas aleatorias, serializarlas a LRC y parsearlas | se recuperan los mismos tiempos y textos (1000 corridas) |
+
+## Matriz: `activeLineIndex` (core, búsqueda binaria)
+
+| Caso | Esperado |
+|------|----------|
+| posición antes de la primera marca | -1 |
+| posición exacta en una marca | índice de esa línea |
+| posición entre dos marcas | índice de la línea anterior |
+| posición después de la última marca | índice de la última línea |
+| lista vacía | -1 |
+| una sola línea | 0 si la posición la alcanza, -1 si no |
+| marcas con el mismo `timeMs` | el último de ellos (se documenta en el test) |
+| **Propiedad:** posiciones crecientes | el índice nunca baja (monótono) |
+| **Propiedad:** cualquier posición | el resultado es -1 o un índice válido con `lines[i].timeMs <= positionMs`, y coincide con una búsqueda lineal de referencia (1000 corridas) |
+
+## Matriz: `LrcLibLyricsProvider` (`fetch` inyectado y simulado, sin red real)
+
+| Caso | Esperado |
+|------|----------|
+| `/api/get` 200 con `syncedLyrics` | `kind: 'synced'` con las líneas parseadas |
+| `/api/get` 200 solo con `plainLyrics` | `kind: 'plain'` con las líneas de texto completas |
+| `/api/get` 200 con `instrumental: true` | `kind: 'instrumental'` |
+| la petición lleva título, artista, álbum y duración en segundos | parámetros correctos, con la duración redondeada |
+| `/api/get` 404 y `/api/search` con una coincidencia dentro de 3 s | se usa esa coincidencia |
+| `/api/get` 404 y `/api/search` con varias coincidencias | gana la de duración más cercana |
+| `/api/search` sin coincidencias dentro de 3 s | `find` resuelve `null` (no encontrado), sin lanzar error |
+| error de red (`fetch` rechaza) | `LyricsRequestError` |
+| HTTP 500 | `LyricsRequestError` con `status` 500 |
+| JSON malformado | `LyricsRequestError`, sin crash |
+| abort durante la petición | rechaza con `AbortError` y no se guarda en caché |
+| segunda petición de la misma canción | cache hit: no vuelve a llamar a `fetch` |
+| `null` (no encontrado) | se guarda en caché y no se vuelve a pedir en la sesión |
+| errores de red o HTTP | no se guardan en caché |
+
+## Matriz: `useLyrics` (hook con `renderHook` y provider simulado)
+
+| Caso | Esperado |
+|------|----------|
+| cambia la canción mientras carga la anterior | se aborta la petición anterior; solo la última llega al estado |
+| cambio rápido A → B → C | el estado final corresponde a C; A y B no actualizan nada |
+| **cancela al cambiar de canción** | la petición de la canción anterior recibe `abort()` antes de lanzar la nueva |
+| canción `null` | estado `idle` y sin petición |
+| error de red | estado `error`; reintentar vuelve a pedir |
+| el componente se desmonta | se aborta la petición en curso |
+| `AbortError` | no aparece como error en el estado |
+| misma canción otra vez | no se vuelve a pedir si ya hay resultado |
+
 ## Componentes (Testing Library, consultas por rol)
 
 - PlayerBar: los botones tienen aria-labels en español y el play cambia a "Pausar".
@@ -130,19 +195,46 @@ En `src/core/__tests__/invariants.ts` va un helper que verifica las 6 invariante
 - Toast "Deshacer": restaura la canción en su posición.
 - Estados vacío, cargando y error que se ven en la lista y en la búsqueda.
 - La fila actual tiene `aria-current="true"`.
+- LibrarySidebar, crear: el botón "Crear" abre el diálogo, la playlist nueva aparece en la lista y el nombre vacío deshabilita la acción.
+- LibrarySidebar, cambiar la activa: al hacer clic, la playlist lleva el sello y `aria-current="true"`, y la reproducción de la anterior se detiene.
+- LibrarySidebar, renombrar: el menú "Opciones de {nombre}" → "Renombrar" cambia el nombre visible.
+- LibrarySidebar, eliminar: pide confirmación. Si era la activa, la activa pasa a otra playlist.
+- LibrarySidebar, única playlist: "Eliminar" está deshabilitada y el motivo se lee con el lector de pantalla (`aria-disabled` y texto).
+- Navegación entre vistas: Inicio → Buscar → álbum → "Volver" regresa a Buscar con el filtro, el texto y el scroll conservados. "Volver" sin historial lleva a Buscar.
+- Cada vista muestra su estado vacío, cargando y error. Home sin canciones ofrece buscar o importar.
+- La navegación marca la vista activa con `aria-current="page"`.
+- Reproduciendo ahora: se abre desde el botón de la barra y el foco entra en el título. "Letra" la abre con el panel de letra en primer plano.
+- Reproduciendo ahora: Esc la cierra y el foco vuelve al botón que la abrió.
+- Línea activa: la línea con `aria-current="true"` es la que corresponde a `positionMs`.
+- Clic (o Enter) en una línea sincronizada llama a `seek` con su `timeMs`. Las líneas de texto plano no son botones.
+- Estados de la letra: cargando, sincronizada, texto plano (sin seek), instrumental, no disponible (sin "Reintentar") y error (con "Reintentar").
+- Sin canción: estado vacío con un botón para buscar.
+- Con `prefers-reduced-motion`, el desplazamiento de la letra es instantáneo (se simula `matchMedia`).
+- Atribución "Letras: LRCLIB" visible en los estados con letra.
+- Carátula sin imagen: se muestra el respaldo hanko con la inicial.
+- Navegación inferior móvil (`matchMedia` menor de 768 px): aparecen Inicio, Buscar y Biblioteca, con `aria-label` y el mini reproductor debajo.
 
 ## E2E (Playwright, con `e2e/fixtures/tone-a.wav`, `tone-b.wav` y `tone-c.wav`, que son tonos cortos de 2 a 3 s)
 
-1. Importar 3 archivos → aparecen en orden → play → suena el primero.
-2. Siguiente / anterior recorren a, b y c.
-3. Insertar al inicio, al final y en la posición 2 → el orden visible es correcto.
-4. Eliminar la canción actual mientras suena → suena la siguiente.
-5. Avance automático: dejar que termine `a` → suena `b`.
-6. Repeat all en la última → vuelve a la primera.
-7. Deshacer una eliminación.
-8. Teclado: todo el flujo 1 a 4 sin ratón.
-9. Recargar → se mantienen el volumen y el modo; los locales se marcan "vuelve a importar".
-10. Accesibilidad: `@axe-core/playwright` sin violaciones serias en la vista principal.
+Las letras se interceptan con `page.route('https://lrclib.net/**')`. Nunca hay red real en E2E.
+
+1. Importar 3 archivos desde "Importar archivos" de la biblioteca → aparecen en "Mi lista" en orden → play → suena el primero.
+2. Crear una playlist "Viaje" desde Biblioteca → queda activa y vacía → importar 1 archivo → cambiar a "Mi lista" → la reproducción anterior se detiene.
+3. Renombrar una playlist y eliminar otra. No se puede eliminar la única.
+4. Siguiente y anterior recorren a, b y c desde la barra del reproductor.
+5. Insertar al inicio, al final y en la posición 2 → el orden visible es correcto.
+6. Eliminar la canción actual mientras suena → suena la siguiente.
+7. Avance automático: dejar que termine `a` → suena `b`.
+8. Repeat all en la última → vuelve a la primera.
+9. Deshacer una eliminación (toast de 5 s).
+10. Inicio: tras importar, muestra "Continuar escuchando" y "Tus playlists". Buscar sin login de Spotify explica qué falta.
+11. Reproduciendo ahora: se abre desde la barra, muestra el respaldo hanko (los fixtures no tienen carátula), Esc la cierra y el foco vuelve al botón.
+12. Letra sincronizada: con la ruta de LRCLIB simulada, la línea activa cambia a medida que avanza `tone-a`, y un clic en una línea mueve `currentTime`.
+13. Letra con error: LRCLIB responde 500 → se ve "No se pudo cargar la letra" → "Reintentar" hace una nueva petición. Con `route.abort()` el estado es el mismo.
+14. Teclado: el flujo 1 a 4 sin ratón. Espacio, ←/→, Shift+←/→ y M funcionan fuera de los inputs, y Esc cierra Reproduciendo ahora.
+15. Móvil a 360 × 740: la navegación inferior (Inicio, Buscar, Biblioteca) queda encima del mini reproductor, no hay desplazamiento horizontal y el flujo de importar sigue funcionando.
+16. Recargar: se mantienen el volumen y el modo; los locales se marcan "vuelve a importar".
+17. Accesibilidad: `@axe-core/playwright` sin violaciones serias en Inicio, Buscar, Biblioteca y Reproduciendo ahora con letra.
 
 Spotify **no** se prueba en E2E automático (necesitaría credenciales y DRM); se cubre con los unitarios simulados y la checklist manual.
 
@@ -155,5 +247,6 @@ Spotify **no** se prueba en E2E automático (necesitaría credenciales y DRM); s
 - [ ] Abrir Spotify en el móvil y transferir: la app muestra "Reproduciendo en otro dispositivo".
 - [ ] Una cuenta sin Premium (o fuera de la allowlist) ve un mensaje claro.
 - [ ] Responsive a 360 px.
+- [ ] Letra sincronizada con una canción conocida de LRCLIB: la línea activa sigue el audio y el clic hace seek. Con una canción sin letra se ve "No encontramos letra".
 - [ ] Contraste y foco visibles en modo claro.
 - [ ] `pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm e2e` en verde.
