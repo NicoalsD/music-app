@@ -67,44 +67,6 @@
   min-width: 0;
 }
 
-.controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-}
-
-.play {
-  width: 52px;
-  height: 52px;
-}
-
-.spinner {
-  color: var(--on-ai);
-}
-
-.repeat {
-  position: relative;
-  display: inline-flex;
-}
-
-.badge {
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
-  display: grid;
-  place-items: center;
-  min-width: 14px;
-  height: 14px;
-  border-radius: 7px;
-  background: var(--ai);
-  color: var(--on-ai);
-  font-size: 10px;
-  font-weight: var(--weight-bold);
-  line-height: 1;
-  pointer-events: none;
-}
-
 .progress {
   min-width: 0;
 }
@@ -173,11 +135,6 @@
   .side,
   .hints {
     display: none;
-  }
-
-  .play {
-    width: 44px;
-    height: 44px;
   }
 
   .title {

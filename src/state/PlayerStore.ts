@@ -85,6 +85,7 @@ export interface SongView {
   readonly trackId: string;
   readonly title: string;
   readonly artistLabel: string;
+  readonly artists: readonly string[];
   readonly albumName: string;
   readonly durationMs: number;
   readonly artwork: Artwork;
@@ -623,6 +624,7 @@ export class PlayerStore {
       trackId: song.trackId,
       title: song.title,
       artistLabel: song.artistLabel,
+      artists: song.artists,
       albumName: song.album.name,
       durationMs: song.durationMs,
       artwork: song.artwork,

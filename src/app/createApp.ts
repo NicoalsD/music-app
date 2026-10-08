@@ -9,7 +9,14 @@ import {
   browserSpotifyTimers,
   loadSpotifySdk,
 } from '../player';
-import { LocalFileProvider, SpotifyApiClient, SpotifyProvider, parseMetadata } from '../providers';
+import {
+  LocalFileProvider,
+  LrcLibLyricsProvider,
+  SpotifyApiClient,
+  SpotifyProvider,
+  parseMetadata,
+} from '../providers';
+import type { LyricsProvider } from '../providers';
 import { PlayerStore } from '../state/PlayerStore';
 import type { Notifier } from '../state/PlayerStore';
 import { StatePersistence, restoreState } from '../state/persistence';
@@ -20,6 +27,7 @@ import { sonnerNotifier } from './sonnerNotifier';
 
 export interface AppRuntime {
   readonly store: PlayerStore;
+  readonly lyricsProvider: LyricsProvider;
   /** Completes a pending Spotify redirect and connects the player when logged in. */
   start(): Promise<void>;
   dispose(): void;
@@ -95,8 +103,11 @@ export function createApp(notifier: Notifier = sonnerNotifier): AppRuntime {
   window.addEventListener('pagehide', flush);
   document.addEventListener('visibilitychange', onVisibility);
 
+  const lyricsProvider = new LrcLibLyricsProvider({ fetch: fetcher });
+
   return {
     store,
+    lyricsProvider,
     async start() {
       try {
         await auth.handleRedirect();

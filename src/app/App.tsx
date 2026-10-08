@@ -1,6 +1,14 @@
 import { useCallback, useState } from 'react';
 import type { ReactNode } from 'react';
-import { StoreProvider, useSearch, useStore } from '../state';
+import {
+  LyricsProviderScope,
+  StoreProvider,
+  usePlayerSnapshot,
+  useSearch,
+  useStore,
+} from '../state';
+import type { PlayerSnapshot } from '../state';
+import type { LyricsProvider } from '../providers';
 import type { PlayerStore } from '../state';
 import { BackdropScene } from '../ui/components/BackdropScene';
 import { Toaster } from '../ui/components/Toaster';
@@ -14,12 +22,15 @@ import { LibrarySidebar } from '../ui/screens/LibrarySidebar';
 import type { SidebarSection } from '../ui/screens/LibrarySidebar';
 import { MobileNav } from '../ui/screens/MobileNav';
 import type { MobileSection } from '../ui/screens/MobileNav';
+import { NowPlayingView } from '../ui/screens/NowPlayingView';
 import { PlayerBar } from '../ui/screens/PlayerBar';
 import { PlaylistPanel } from '../ui/screens/PlaylistPanel';
 import { SEARCH_INPUT_ID } from '../ui/screens/SearchField';
 import { SearchPanel } from '../ui/screens/SearchPanel';
 import { ShortcutsDialog } from '../ui/screens/ShortcutsDialog';
 import { TopBar } from '../ui/screens/TopBar';
+import { pickArtworkUrl } from '../ui/components/artworkSizing';
+import { useSunColor } from '../ui/useSunColor';
 import { useDocumentTitle } from '../ui/screens/useDocumentTitle';
 import { useGlobalShortcuts } from '../ui/screens/useGlobalShortcuts';
 import { useMainNavigation } from '../ui/screens/mainView';
@@ -34,6 +45,11 @@ function sidebarSection(view: MainView): SidebarSection {
   return 'search';
 }
 
+const selectArtworkUrl = (s: PlayerSnapshot): string | undefined => {
+  const current = s.songs[s.currentIndex];
+  return current === undefined ? undefined : pickArtworkUrl(current.artwork, 'md');
+};
+
 function AppShell() {
   const store = useStore();
   const search = useSearch(store.provider);
@@ -44,7 +60,10 @@ function AppShell() {
   const [libraryOpen, setLibraryOpen] = useState(false);
   // Hooks for the Now Playing view: it opens from the player bar's cover and expand button.
   const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
-  const [lyricsOpen, setLyricsOpen] = useState(false);
+  const [lyricsOpen, setLyricsOpen] = useState(true);
+  // The sun takes the cover's dominant colour only while the Now Playing view is open.
+  const artworkUrl = usePlayerSnapshot(selectArtworkUrl);
+  const artworkSun = useSunColor(nowPlayingOpen ? artworkUrl : undefined);
 
   const { goTo, push } = nav;
 
@@ -78,7 +97,13 @@ function AppShell() {
   );
   const showHelp = useCallback(() => setHelpOpen(true), []);
   const openNowPlaying = useCallback(() => setNowPlayingOpen(true), []);
-  const toggleLyrics = useCallback(() => setLyricsOpen((open) => !open), []);
+  // The bar's "Letra" button: Now Playing is modal, so it is only reachable while the view is
+  // closed, and it opens the view with the lyrics column visible.
+  const openWithLyrics = useCallback(() => {
+    setLyricsOpen(true);
+    setNowPlayingOpen(true);
+  }, []);
+  const toggleLyricsColumn = useCallback(() => setLyricsOpen((open) => !open), []);
 
   useGlobalShortcuts({ onFocusSearch: goToSearch, onShowHelp: showHelp });
   useDocumentTitle();
@@ -131,7 +156,7 @@ function AppShell() {
 
   return (
     <>
-      <BackdropScene />
+      <BackdropScene {...(artworkSun === null ? {} : { sunColor: artworkSun })} />
       <a className={styles.skip} href="#main">
         {strings.app.skipToContent}
       </a>
@@ -160,10 +185,18 @@ function AppShell() {
         </main>
         <MobileNav current={mobileSection} onSelect={selectMobileSection} />
       </div>
-      <PlayerBar
-        onOpenNowPlaying={openNowPlaying}
-        onToggleLyrics={toggleLyrics}
+      <div className={styles.barSlot} data-now-playing={nowPlayingOpen ? 'true' : 'false'}>
+        <PlayerBar
+          onOpenNowPlaying={openNowPlaying}
+          onToggleLyrics={openWithLyrics}
+          lyricsOpen={nowPlayingOpen && lyricsOpen}
+        />
+      </div>
+      <NowPlayingView
+        open={nowPlayingOpen}
+        onOpenChange={setNowPlayingOpen}
         lyricsOpen={lyricsOpen}
+        onToggleLyrics={toggleLyricsColumn}
       />
       <ShortcutsDialog open={helpOpen} onOpenChange={setHelpOpen} />
       <Toaster offset={TOAST_OFFSET_PX} />
@@ -174,15 +207,19 @@ function AppShell() {
 export interface AppProps {
   /** Created once outside React (see main.tsx) so StrictMode cannot build it twice. */
   store: PlayerStore;
+  /** Created once outside React too; tests inject a fake so they never touch the network. */
+  lyricsProvider: LyricsProvider;
 }
 
 /** Application root: store context, tooltips and the screen shell. */
-export function App({ store }: AppProps) {
+export function App({ store, lyricsProvider }: AppProps) {
   return (
     <StoreProvider store={store}>
-      <TooltipProvider>
-        <AppShell />
-      </TooltipProvider>
+      <LyricsProviderScope provider={lyricsProvider}>
+        <TooltipProvider>
+          <AppShell />
+        </TooltipProvider>
+      </LyricsProviderScope>
     </StoreProvider>
   );
 }

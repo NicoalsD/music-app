@@ -35,3 +35,9 @@
   right: 6%;
   bottom: 6%;
 }
+
+/* Container query unit for the fallback letter, so it scales with the cover. */
+.fluid {
+  display: block;
+  container-type: inline-size;
+}

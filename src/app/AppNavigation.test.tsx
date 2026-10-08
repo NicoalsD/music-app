@@ -4,6 +4,7 @@ import { makeTrack } from '../core/test-utils/fakes';
 import type { AlbumDetail, ArtistDetail, SearchResults } from '../providers/MusicProvider';
 import { createHarness, spotifyTrack } from '../state/test-utils/harness';
 import { strings } from '../ui/i18n/es';
+import { FakeLyricsProvider } from '../state/test-utils/FakeLyricsProvider';
 import { App } from './App';
 
 const albumSummary = {
@@ -35,7 +36,7 @@ function setup() {
   h.provider.searchImpl = () => Promise.resolve(results);
   h.provider.albumImpl = () => Promise.resolve(album);
   h.provider.artistImpl = () => Promise.resolve(artist);
-  const view = render(<App store={h.store} />);
+  const view = render(<App store={h.store} lyricsProvider={new FakeLyricsProvider()} />);
   act(() => {
     h.auth.loggedIn = true;
     h.auth.emit('logged-in');

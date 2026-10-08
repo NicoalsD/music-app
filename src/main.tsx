@@ -18,7 +18,7 @@ const root = document.getElementById('root');
 if (root) {
   createRoot(root).render(
     <StrictMode>
-      <App store={app.store} />
+      <App store={app.store} lyricsProvider={app.lyricsProvider} />
     </StrictMode>,
   );
 }

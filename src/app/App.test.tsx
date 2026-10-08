@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { makeTrack } from '../core/test-utils/fakes';
 import { createHarness, spotifyTrack } from '../state/test-utils/harness';
 import { strings } from '../ui/i18n/es';
+import { FakeLyricsProvider } from '../state/test-utils/FakeLyricsProvider';
 import { App } from './App';
 
 function appHeader(): HTMLElement {
@@ -13,7 +14,7 @@ function appHeader(): HTMLElement {
 
 function setup() {
   const h = createHarness();
-  const view = render(<App store={h.store} />);
+  const view = render(<App store={h.store} lyricsProvider={new FakeLyricsProvider()} />);
   return { ...view, h, user: userEvent.setup() };
 }
 

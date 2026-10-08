@@ -304,6 +304,9 @@ export const strings = {
     title: 'Reproduciendo ahora',
     close: 'Cerrar',
     open: 'Abrir la pantalla de reproducción',
+    showLyrics: 'Mostrar la letra',
+    hideLyrics: 'Ocultar la letra',
+    toolbar: 'Herramientas de la pantalla de reproducción',
   },
   lyrics: {
     title: 'Letra',
@@ -313,6 +316,7 @@ export const strings = {
     error: 'No se pudo cargar la letra',
     retry: 'Reintentar',
     source: 'Letra: LRCLIB',
+    seekTo: (time: string) => `Ir a ${time}`,
   },
   shortcuts: {
     title: 'Atajos de teclado',

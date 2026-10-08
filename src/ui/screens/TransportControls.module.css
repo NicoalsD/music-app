@@ -1,0 +1,53 @@
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.play {
+  width: 52px;
+  height: 52px;
+}
+
+.controls[data-size='large'] {
+  gap: var(--space-3);
+}
+
+.controls[data-size='large'] .play {
+  width: 64px;
+  height: 64px;
+}
+
+.spinner {
+  color: var(--on-ai);
+}
+
+.repeat {
+  position: relative;
+  display: inline-flex;
+}
+
+.badge {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  display: grid;
+  place-items: center;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--ai);
+  color: var(--on-ai);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  pointer-events: none;
+}
+
+@media (max-width: 767px) {
+  .controls[data-size='bar'] .play {
+    width: 44px;
+    height: 44px;
+  }
+}

@@ -11,27 +11,35 @@ export interface ArtworkProps {
   title: string;
   album: string;
   size: ArtworkSize;
+  /** Fills the width of its container as a square (the Now Playing cover) instead of a fixed size. */
+  fluid?: boolean;
   className?: string | undefined;
 }
 
 /** Artwork framed like a mounted woodblock print, with a themed fallback. */
-export function Artwork({ artwork, title, album, size, className }: ArtworkProps) {
+export function Artwork({ artwork, title, album, size, fluid = false, className }: ArtworkProps) {
   const url = pickArtworkUrl(artwork, size);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const px = ARTWORK_PX[size];
   const mat = MAT_PX[size];
   const showImage = url !== undefined && failedUrl !== url;
   const initial = Array.from(title.trim())[0]?.toUpperCase() ?? strings.artwork.sealKanji;
-  const frameStyle = { width: px, height: px, padding: mat };
+  const frameStyle = fluid
+    ? { width: '100%', aspectRatio: '1 / 1', padding: mat }
+    : { width: px, height: px, padding: mat };
 
   if (showImage) {
     return (
-      <span className={cx(styles.frame, className)} style={frameStyle} data-artwork="image">
+      <span
+        className={cx(styles.frame, fluid && styles.fluid, className)}
+        style={frameStyle}
+        data-artwork="image"
+      >
         <img
           className={styles.image}
           src={url}
           alt={strings.artwork.alt(album)}
-          loading="lazy"
+          loading={fluid ? 'eager' : 'lazy'}
           decoding="async"
           draggable={false}
           onError={() => setFailedUrl(url)}
@@ -41,12 +49,16 @@ export function Artwork({ artwork, title, album, size, className }: ArtworkProps
   }
 
   return (
-    <span className={cx(styles.frame, className)} style={frameStyle} data-artwork="fallback">
+    <span
+      className={cx(styles.frame, fluid && styles.fluid, className)}
+      style={frameStyle}
+      data-artwork="fallback"
+    >
       <span
         className={styles.fallback}
         role="img"
         aria-label={strings.artwork.alt(album || title)}
-        style={{ fontSize: px * 0.42 }}
+        style={{ fontSize: fluid ? '42cqw' : px * 0.42 }}
       >
         <span aria-hidden="true">{initial}</span>
         <Hanko

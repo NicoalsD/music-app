@@ -72,3 +72,13 @@
     display: none;
   }
 }
+
+/* While the Now Playing view is open it replaces the shell and the bar: only the backdrop stays. */
+.shell[data-now-playing='true'],
+.barSlot[data-now-playing='true'] {
+  visibility: hidden;
+}
+
+.barSlot {
+  display: contents;
+}

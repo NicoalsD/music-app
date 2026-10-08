@@ -1,0 +1,194 @@
+/* Full viewport and transparent: the fixed backdrop scene shows around the two shoji panels. */
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  color: var(--ink);
+  animation: view-in var(--duration-slow) var(--ease-out);
+}
+
+.root[data-state='closed'] {
+  animation-duration: var(--duration-fast);
+  animation-direction: reverse;
+  animation-fill-mode: forwards;
+}
+
+.root:focus {
+  outline: none;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-1) var(--space-2);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 45fr) minmax(0, 55fr);
+  gap: var(--space-4);
+  min-height: 0;
+}
+
+.layout[data-lyrics='false'] {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+}
+
+.layout[data-lyrics='false'] > .player {
+  width: min(100%, 720px);
+}
+
+.player {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+  min-height: 0;
+  padding: var(--space-5);
+  overflow-y: auto;
+}
+
+.player > * {
+  width: 100%;
+  min-width: 0;
+}
+
+.stage {
+  position: relative;
+  /* The cover never exceeds 640px nor the height that leaves room for the controls. */
+  width: min(100%, 640px, 44dvh);
+  margin-inline: auto;
+}
+
+/* Decorative keyline around the print, like a double border on a woodblock sheet. */
+.ring {
+  position: absolute;
+  inset: calc(-1 * var(--space-2));
+  border: 1px solid var(--ink-85);
+  border-radius: var(--radius-md);
+  pointer-events: none;
+}
+
+.cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+}
+
+.coverFrame {
+  width: 100%;
+}
+
+.meta {
+  display: grid;
+  gap: var(--space-1);
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-display);
+  line-height: var(--leading-display);
+  overflow-wrap: anywhere;
+}
+
+.title:focus {
+  outline: none;
+}
+
+.title:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.artists {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+}
+
+.album {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-md);
+}
+
+.progress {
+  min-width: 0;
+}
+
+.volume {
+  justify-content: center;
+}
+
+.lyrics {
+  min-width: 0;
+  min-height: 0;
+  padding: var(--space-3) 0;
+}
+
+@media (min-width: 1024px) {
+  .title {
+    font-size: var(--text-3xl);
+  }
+}
+
+/* Single column: cover and controls first, lyrics below. The whole layout scrolls. */
+@media (max-width: 767px) {
+  .root {
+    padding: var(--space-2);
+  }
+
+  .layout,
+  .layout[data-lyrics='false'] {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    overflow-y: auto;
+  }
+
+  .layout > .player,
+  .layout[data-lyrics='false'] > .player {
+    flex: none;
+    width: 100%;
+    padding: var(--space-4);
+    overflow: visible;
+  }
+
+  .stage {
+    width: min(100%, 320px, 40dvh);
+  }
+
+  .lyrics {
+    flex: none;
+    height: 70dvh;
+  }
+}
+
+@keyframes view-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root {
+    animation-name: fade-only;
+  }
+
+  @keyframes fade-only {
+    from {
+      opacity: 0;
+    }
+  }
+}

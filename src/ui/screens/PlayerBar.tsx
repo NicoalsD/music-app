@@ -1,23 +1,14 @@
 import { useId } from 'react';
-import {
-  Maximize2,
-  MicVocal,
-  Pause,
-  Play,
-  Repeat,
-  Shuffle,
-  SkipBack,
-  SkipForward,
-} from 'lucide-react';
-import { usePlayerSnapshot, useStore } from '../../state';
+import { Maximize2, MicVocal } from 'lucide-react';
+import { usePlayerSnapshot } from '../../state';
 import type { PlayerSnapshot } from '../../state';
 import { Artwork } from '../components/Artwork';
 import { IconButton } from '../components/IconButton';
 import { ShojiPanel } from '../components/ShojiPanel';
-import { Spinner } from '../components/Spinner';
 import { strings } from '../i18n/es';
 import { PlayerNotice } from './PlayerNotice';
 import { PlayerProgress } from './PlayerProgress';
+import { TransportControls } from './TransportControls';
 import { VolumeControl } from './VolumeControl';
 import { shallowEqual } from './shallowEqual';
 import styles from './PlayerBar.module.css';
@@ -28,9 +19,6 @@ const selectBar = (s: PlayerSnapshot) => {
   const next = s.songs[s.currentIndex + 1];
   return {
     status: s.player.status,
-    repeat: s.player.repeat,
-    shuffle: s.player.shuffle,
-    isEmpty: s.songs.length === 0,
     title: current === undefined ? null : current.title,
     artists: current === undefined ? '' : current.artistLabel,
     album: current === undefined ? '' : current.albumName,
@@ -53,11 +41,8 @@ export interface PlayerBarProps {
 
 /** Fixed player bar: now playing, transport, progress, volume and notices. */
 export function PlayerBar({ onOpenNowPlaying, onToggleLyrics, lyricsOpen }: PlayerBarProps) {
-  const store = useStore();
   const bar = usePlayerSnapshot(selectBar, shallowEqual);
   const hintsId = useId();
-  const busy = bar.status === 'loading';
-  const playing = bar.status === 'playing' || busy;
   const meta = [bar.artists, bar.album].filter((part) => part !== '').join(' · ');
 
   return (
@@ -92,59 +77,12 @@ export function PlayerBar({ onOpenNowPlaying, onToggleLyrics, lyricsOpen }: Play
       </div>
 
       <div className={styles.center}>
-        <div className={styles.controls}>
-          <IconButton
-            label={strings.player.shuffle}
-            pressed={bar.shuffle}
-            className={styles.optional}
-            icon={<Shuffle size={20} strokeWidth={1.5} />}
-            onClick={() => store.toggleShuffle()}
-          />
-          <IconButton
-            label={strings.player.previous}
-            aria-describedby={bar.previousTitle === null ? undefined : `${hintsId}-prev`}
-            icon={<SkipBack size={22} strokeWidth={1.5} />}
-            onClick={() => store.previous()}
-            disabled={bar.isEmpty}
-          />
-          <IconButton
-            label={playing ? strings.player.pause : strings.player.play}
-            variant="primary"
-            className={styles.play}
-            aria-busy={busy}
-            disabled={bar.isEmpty}
-            icon={
-              busy ? (
-                <Spinner size={22} label={strings.player.loadingTrack} className={styles.spinner} />
-              ) : playing ? (
-                <Pause size={22} strokeWidth={1.5} />
-              ) : (
-                <Play size={22} strokeWidth={1.5} />
-              )
-            }
-            onClick={() => store.togglePlay()}
-          />
-          <IconButton
-            label={strings.player.next}
-            aria-describedby={bar.nextTitle === null ? undefined : `${hintsId}-next`}
-            icon={<SkipForward size={22} strokeWidth={1.5} />}
-            onClick={() => store.next()}
-            disabled={bar.isEmpty}
-          />
-          <span className={`${styles.optional} ${styles.repeat}`}>
-            <IconButton
-              label={strings.player.repeat[bar.repeat]}
-              pressed={bar.repeat !== 'off'}
-              icon={<Repeat size={20} strokeWidth={1.5} />}
-              onClick={() => store.cycleRepeat()}
-            />
-            {bar.repeat === 'one' ? (
-              <span className={styles.badge} aria-hidden="true">
-                {strings.player.repeatOneBadge}
-              </span>
-            ) : null}
-          </span>
-        </div>
+        <TransportControls
+          className={styles.controls}
+          secondaryClassName={styles.optional}
+          previousHintId={bar.previousTitle === null ? undefined : `${hintsId}-prev`}
+          nextHintId={bar.nextTitle === null ? undefined : `${hintsId}-next`}
+        />
         <PlayerProgress className={styles.progress} />
         <div className={styles.hints}>
           {bar.previousTitle === null ? null : (
