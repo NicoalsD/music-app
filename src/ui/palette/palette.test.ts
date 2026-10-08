@@ -5,6 +5,7 @@ import type { Rgb } from './color';
 import {
   FALLBACK_PALETTE,
   FIELD_CONTRAST,
+  FIELD_MAX_SATURATION,
   HUE_SEPARATION,
   buildTheme,
   extractPalette,
@@ -141,6 +142,16 @@ describe('buildTheme', () => {
   it('mutes the dominant colour toward paper instead of using it raw', () => {
     const theme = buildTheme(covers['pastel'] ?? null);
     expect(theme.field).not.toBe('#f0dcbe');
+  });
+
+  it('keeps the field calm: a vivid cover only tints it', () => {
+    for (const palette of Object.values(covers)) {
+      const field = toHsl(fromHex(buildTheme(palette).field));
+      expect(field.s).toBeLessThanOrEqual(FIELD_MAX_SATURATION + 0.02);
+    }
+    // The tint still follows the cover: a red cover gives a reddish field.
+    const red = toHsl(fromHex(buildTheme(covers['red'] ?? null).field));
+    expect(hueDistance(red.h, 0)).toBeLessThan(30);
   });
 
   it('builds the fallback theme from the token palette', () => {

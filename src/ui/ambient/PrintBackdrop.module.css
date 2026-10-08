@@ -7,28 +7,31 @@
   pointer-events: none;
 }
 
+/* The sun is an ink-brush ring (enso), not a solid disc: a hint of the cover's second colour. */
 .sun {
   position: absolute;
   top: 46%;
   left: 24%;
   width: min(78vmin, 720px);
   aspect-ratio: 1 / 1;
+  border: 2px solid var(--np-sun);
   border-radius: 50%;
-  background-color: var(--np-sun);
+  opacity: 0.35;
   transform: translate(-50%, -50%);
 }
 
-/* Seigaiha ground along the bottom edge. */
+/* Seigaiha ground along the bottom edge, as faint linework. */
 .waves {
   position: absolute;
   inset: auto 0 0;
   height: var(--np-wave-height);
+  opacity: 0.22;
 }
 
 .scale circle {
   fill: var(--np-field);
   stroke: var(--np-accent);
-  stroke-width: 1.5px;
+  stroke-width: 1px;
 }
 
 .grain {

@@ -31,6 +31,13 @@ const CHROMATIC_SATURATION = 0.15;
 const MIN_SHARE = 0.02;
 /** Contrast of the field against the text colour (headroom for the dimmed lyric lines). */
 export const FIELD_CONTRAST = 7;
+/**
+ * How far the dominant colour is mixed toward paper (light covers) or ink (dark covers): the cover
+ * tints the page, it does not paint it.
+ */
+const FIELD_NEUTRAL_MIX = 0.45;
+/** Saturation ceiling of the field, so a vivid cover never turns the whole screen loud. */
+export const FIELD_MAX_SATURATION = 0.3;
 
 /** Theme tokens (`--ai`, `--shu`, `--jade`) used when a cover has no art or cannot be read. */
 export const FALLBACK_PALETTE: CoverPalette = {
@@ -107,14 +114,18 @@ export interface PrintTheme {
 }
 
 /**
- * Turns a cover palette into the colours of the page. The dominant colour is muted toward paper
- * (20%) so it reads as printed ink, then its lightness is moved until the text colour (ink or
- * paper, whichever contrasts more) reaches `FIELD_CONTRAST` against it. The sun and the wave are
+ * Turns a cover palette into the colours of the page. The dominant colour is mixed toward paper
+ * (light covers) or ink (dark covers) and its saturation capped (`FIELD_MAX_SATURATION`), so the
+ * page is calm paper or calm ink tinted by the cover; then its lightness is moved until the text
+ * colour (ink or paper, whichever contrasts more) reaches `FIELD_CONTRAST` against it. The sun and the wave are
  * moved until they keep 4.5:1 against the text, so text stays legible wherever it overlaps them.
  */
 export function buildTheme(palette: CoverPalette | null): PrintTheme {
   const source = palette ?? FALLBACK_PALETTE;
-  const muted = mix(source.dominant, PAPER, 0.2);
+  const darkCover = pickTextColor([source.dominant], [INK, PAPER_RAISED]).color !== INK;
+  const neutral = darkCover ? INK : PAPER;
+  const mixed = toHsl(mix(source.dominant, neutral, FIELD_NEUTRAL_MIX));
+  const muted = fromHsl({ ...mixed, s: Math.min(mixed.s, FIELD_MAX_SATURATION) });
   const choice = pickTextColor([muted], [INK, PAPER_RAISED]);
   const text = choice.color;
   const field = ensureContrast(muted, text, FIELD_CONTRAST);

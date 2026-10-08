@@ -13,6 +13,8 @@
   right: -6vmin;
   width: 38vmin;
   height: 38vmin;
+  /* A faint print, not a solid shape: the panels' blur would turn it into a loud blot. */
+  opacity: 0.3;
   will-change: transform;
 }
 
@@ -33,7 +35,7 @@
   fill: none;
   stroke: var(--ink);
   stroke-width: 1;
-  opacity: 0.7;
+  opacity: 0.4;
 }
 
 .swallowA,
@@ -64,6 +66,7 @@
   right: 0;
   width: min(58vmin, 520px);
   height: auto;
+  opacity: 0.55;
 }
 
 .bough {
@@ -97,6 +100,7 @@
   bottom: -2vmin;
   width: min(64vw, 72vmin);
   aspect-ratio: 560 / 420;
+  opacity: 0.22;
   will-change: transform;
 }
 
