@@ -121,6 +121,24 @@ describe('PlayerStore adding songs', () => {
     expect(h.localOutput.calls).toContain('load:blob:n@0');
   });
 
+  it('playNow on the track that is already current resumes it without a duplicate entry', async () => {
+    const h = createHarness();
+    seed(h, 'a', 'b');
+    h.store.playEntry(h.store.getSnapshot().songs[0]?.entryId ?? '');
+    await settle();
+    h.store.togglePlay();
+    await settle();
+    expect(h.store.getSnapshot().player.status).toBe('paused');
+    h.store.playNow(makeTrack('a'));
+    await settle();
+    expect(titles(h)).toEqual(['Title a', 'Title b']);
+    expect(h.store.getSnapshot().player.status).toBe('playing');
+    h.store.playNow(makeTrack('a'));
+    await settle();
+    expect(titles(h)).toEqual(['Title a', 'Title b']);
+    expect(h.store.getSnapshot().player.status).toBe('playing');
+  });
+
   it('adds whole albums at the end and at the start keeping order', () => {
     const h = createHarness();
     seed(h, 'm');

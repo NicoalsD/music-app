@@ -251,6 +251,11 @@ export class PlayerStore {
 
   /** Inserts right after the current song and starts playing it. */
   playNow(track: Track): void {
+    // Clicking the song that is already current resumes it instead of queueing a duplicate.
+    if (this.#active().current?.trackId === track.trackId) {
+      this.#guard(this.#engine.play());
+      return;
+    }
     const song = this.#active().addNext(track);
     this.#guard(this.#engine.onPlaylistChanged().then(() => this.#engine.playEntry(song.entryId)));
     this.#refresh();
