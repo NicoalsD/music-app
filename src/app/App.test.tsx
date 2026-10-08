@@ -29,6 +29,100 @@ async function openPlaylistView(user: User, name = 'Mi lista') {
   );
 }
 
+/** Makes the given min-width queries match, as a desktop browser would. */
+function mockViewport(width: number) {
+  vi.spyOn(window, 'matchMedia').mockImplementation(
+    (query: string) =>
+      ({
+        matches: (() => {
+          const min = /min-width: (\d+)px/.exec(query);
+          const max = /max-width: (\d+)px/.exec(query);
+          if (min?.[1] !== undefined) return width >= Number(min[1]);
+          if (max?.[1] !== undefined) return width <= Number(max[1]);
+          return false;
+        })(),
+        media: query,
+        onchange: null,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        dispatchEvent: () => false,
+      }) as MediaQueryList,
+  );
+}
+
+describe('App side panel', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  it('shows no side panel and opens Now Playing from "Letra" on narrow screens', async () => {
+    const { user } = setup();
+    expect(
+      screen.queryByRole('complementary', { name: strings.sidePanel.label }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: strings.sidePanel.queue })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: strings.lyrics.title }));
+    expect(
+      await screen.findByRole('dialog', { name: strings.nowPlaying.title }),
+    ).toBeInTheDocument();
+  });
+
+  it('opens on the lyrics on wide screens and toggles tabs from the player', async () => {
+    mockViewport(1440);
+    const { user } = setup();
+    const panel = screen.getByRole('complementary', { name: strings.sidePanel.label });
+    expect(within(panel).getByRole('tab', { name: strings.sidePanel.lyrics })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    const letra = screen.getByRole('button', { name: strings.lyrics.title });
+    const cola = screen.getByRole('button', { name: strings.sidePanel.queue });
+    expect(letra).toHaveAttribute('aria-pressed', 'true');
+    await user.click(cola);
+    expect(within(panel).getByRole('tab', { name: strings.sidePanel.queue })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(localStorage.getItem('music-app:v1:side-panel')).toBe('queue');
+    await user.click(cola);
+    expect(
+      screen.queryByRole('complementary', { name: strings.sidePanel.label }),
+    ).not.toBeInTheDocument();
+    expect(localStorage.getItem('music-app:v1:side-panel')).toBe('none');
+    expect(screen.getByRole('main').parentElement).toHaveAttribute('data-now-playing', 'false');
+  });
+
+  it('restores the saved tab and closes with the panel button', async () => {
+    mockViewport(1440);
+    localStorage.setItem('music-app:v1:side-panel', 'queue');
+    const { user } = setup();
+    const panel = screen.getByRole('complementary', { name: strings.sidePanel.label });
+    expect(within(panel).getByRole('tab', { name: strings.sidePanel.queue })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await user.click(within(panel).getByRole('button', { name: strings.sidePanel.close }));
+    expect(
+      screen.queryByRole('complementary', { name: strings.sidePanel.label }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('starts closed on mid screens, where the panel is a drawer', async () => {
+    mockViewport(1100);
+    const { user } = setup();
+    expect(
+      screen.queryByRole('complementary', { name: strings.sidePanel.label }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: strings.lyrics.title }));
+    expect(
+      screen.getByRole('complementary', { name: strings.sidePanel.label }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('App', () => {
   it('composes the top bar, library sidebar, home view and player bar', () => {
     setup();

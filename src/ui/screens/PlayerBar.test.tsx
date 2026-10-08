@@ -43,6 +43,30 @@ describe('PlayerBar', () => {
     expect(onToggleLyrics).toHaveBeenCalledTimes(1);
   });
 
+  it('only renders the queue toggle when the shell can show it', async () => {
+    setup(makeTrack('a'));
+    expect(screen.queryByRole('button', { name: strings.sidePanel.queue })).not.toBeInTheDocument();
+    const onToggleQueue = vi.fn();
+    renderWithStore(
+      <PlayerBar
+        onOpenNowPlaying={vi.fn()}
+        onToggleLyrics={vi.fn()}
+        onToggleQueue={onToggleQueue}
+        queueOpen
+      />,
+    );
+    const toggle = screen.getByRole('button', { name: strings.sidePanel.queue });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.setup().click(toggle);
+    expect(onToggleQueue).toHaveBeenCalledTimes(1);
+  });
+
+  it('clamps notices to one line inside the strip', () => {
+    const { h } = setup(makeTrack('a'));
+    act(() => h.spotify.setStatus('error'));
+    expect(screen.getByRole('status')).toBeInTheDocument();
+  });
+
   it('shows title, artists and album of the current song', () => {
     setup(makeTrack('a'));
     expect(screen.getByText('Title a')).toBeInTheDocument();

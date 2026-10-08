@@ -13,28 +13,38 @@
   transform: none;
 }
 
-/* topbar / sidebar + main / player (the player bar is fixed, so the shell leaves room for it). */
+/*
+ * One window, like the Spotify QML client. Every piece is a grid cell, nothing is fixed:
+ *   top     | top     | top
+ *   library | main    | side panel (lyrics / queue)
+ *   library | player (docked under the centre and the side panel)
+ */
 .shell {
-  --player-clearance: 148px;
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'top top'
+    'library main'
+    'library player';
   gap: var(--space-3);
   height: 100dvh;
-  padding: var(--space-3) var(--space-4) var(--player-clearance);
+  padding: var(--space-3) var(--space-4);
 }
 
 .shell > :first-child {
-  grid-column: 1 / -1;
+  grid-area: top;
 }
 
 .sidebar {
+  grid-area: library;
   min-width: 0;
   min-height: 0;
 }
 
 .main {
   display: grid;
+  grid-area: main;
   min-width: 0;
   min-height: 0;
 }
@@ -44,19 +54,55 @@
   min-height: 0;
 }
 
+.player {
+  grid-area: player;
+}
+
+.sidePanel {
+  grid-area: panel;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Wide: the side panel is a third column and the player spans under main and panel. */
+@media (min-width: 1280px) {
+  .shell[data-side-panel='true'] {
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--side-panel-width);
+    grid-template-areas:
+      'top top top'
+      'library main panel'
+      'library player player';
+  }
+}
+
+/* Mid: the panel is a drawer laid over the right edge of the content cell. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .sidePanel {
+    z-index: var(--z-sticky);
+    grid-area: main;
+    justify-self: end;
+    width: min(var(--side-panel-width), 100%);
+  }
+}
+
 @media (max-width: 1023px) {
   .shell {
     grid-template-columns: var(--sidebar-width-narrow) minmax(0, 1fr);
   }
 }
 
+/* Phone: content, docked mini player, bottom nav, all stacked in flow. */
 @media (max-width: 767px) {
   .shell {
-    --player-clearance: 156px;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      'top'
+      'main'
+      'player'
+      'nav';
     gap: var(--space-2);
-    padding: var(--space-2) var(--space-3) var(--player-clearance);
+    padding: var(--space-2) var(--space-3);
   }
 
   /* The sidebar is the "Biblioteca" screen: hidden unless that bottom-nav item is selected. */
@@ -66,6 +112,7 @@
 
   .shell[data-library-open='true'] .sidebar {
     display: flex;
+    grid-area: main;
   }
 
   .shell[data-library-open='true'] .main {
@@ -73,12 +120,7 @@
   }
 }
 
-/* While the Now Playing view is open it replaces the shell and the bar: only the backdrop stays. */
-.shell[data-now-playing='true'],
-.barSlot[data-now-playing='true'] {
+/* While the Now Playing view is open it replaces the shell: only the backdrop stays. */
+.shell[data-now-playing='true'] {
   visibility: hidden;
-}
-
-.barSlot {
-  display: contents;
 }

@@ -19,10 +19,13 @@ test.describe('now playing', () => {
     await page.goto('./');
     await openPlaylistTab(page);
     await importTones(page, ['tone-a']);
-    const letra = page.getByRole('button', { name: 'Letra', exact: true });
-    await expect(letra).toBeEnabled();
+    // On wide screens "Letra" toggles the side panel; the expand button opens the full view.
+    const expand = page
+      .getByLabel('Reproductor', { exact: true })
+      .getByRole('button', { name: 'Reproduciendo ahora', exact: true });
+    await expect(expand).toBeEnabled();
 
-    await letra.click();
+    await expand.click();
     const view = page.getByRole('dialog', { name: 'Reproduciendo ahora' });
     await expect(view).toBeVisible();
     await expect(view.getByRole('heading', { name: 'tone-a' })).toBeVisible();
@@ -39,6 +42,6 @@ test.describe('now playing', () => {
 
     await page.keyboard.press('Escape');
     await expect(view).toBeHidden();
-    await expect(letra).toBeFocused();
+    await expect(expand).toBeFocused();
   });
 });

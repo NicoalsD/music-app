@@ -1,10 +1,11 @@
 import { useId } from 'react';
-import { Maximize2, MicVocal } from 'lucide-react';
+import { ListMusic, Maximize2, MicVocal } from 'lucide-react';
 import { usePlayerSnapshot } from '../../state';
 import type { PlayerSnapshot } from '../../state';
 import { Artwork } from '../components/Artwork';
 import { IconButton } from '../components/IconButton';
 import { ShojiPanel } from '../components/ShojiPanel';
+import { cx } from '../cx';
 import { strings } from '../i18n/es';
 import { PlayerNotice } from './PlayerNotice';
 import { PlayerProgress } from './PlayerProgress';
@@ -37,16 +38,33 @@ export interface PlayerBarProps {
   onToggleLyrics: () => void;
   /** Whether the lyrics are showing, for the toggle's pressed state. */
   lyricsOpen?: boolean | undefined;
+  /** Shows or hides the queue. The button is only rendered when this is given. */
+  onToggleQueue?: (() => void) | undefined;
+  /** Whether the queue is showing, for the toggle's pressed state. */
+  queueOpen?: boolean | undefined;
+  /** Grid placement from the shell. */
+  className?: string | undefined;
 }
 
-/** Fixed player bar: now playing, transport, progress, volume and notices. */
-export function PlayerBar({ onOpenNowPlaying, onToggleLyrics, lyricsOpen }: PlayerBarProps) {
+/** Player strip docked in the shell grid: now playing, transport, progress, volume and notices. */
+export function PlayerBar({
+  onOpenNowPlaying,
+  onToggleLyrics,
+  lyricsOpen,
+  onToggleQueue,
+  queueOpen,
+  className,
+}: PlayerBarProps) {
   const bar = usePlayerSnapshot(selectBar, shallowEqual);
   const hintsId = useId();
   const meta = [bar.artists, bar.album].filter((part) => part !== '').join(' · ');
 
   return (
-    <ShojiPanel as="footer" kumiko className={styles.bar} aria-label={strings.player.barLabel}>
+    <ShojiPanel
+      as="footer"
+      className={cx(styles.bar, className)}
+      aria-label={strings.player.barLabel}
+    >
       <div className={styles.now}>
         {bar.artwork !== null && bar.title !== null ? (
           <button
@@ -55,7 +73,7 @@ export function PlayerBar({ onOpenNowPlaying, onToggleLyrics, lyricsOpen }: Play
             aria-label={strings.nowPlaying.open}
             onClick={onOpenNowPlaying}
           >
-            <Artwork artwork={bar.artwork} title={bar.title} album={bar.album} size="md" />
+            <Artwork artwork={bar.artwork} title={bar.title} album={bar.album} size="sm" />
           </button>
         ) : null}
         <div className={styles.info}>
@@ -84,7 +102,7 @@ export function PlayerBar({ onOpenNowPlaying, onToggleLyrics, lyricsOpen }: Play
           nextHintId={bar.nextTitle === null ? undefined : `${hintsId}-next`}
         />
         <PlayerProgress className={styles.progress} />
-        <div className={styles.hints}>
+        <div className={cx(styles.hints, 'visually-hidden')}>
           {bar.previousTitle === null ? null : (
             <span id={`${hintsId}-prev`} className={styles.hint}>
               {strings.player.previousHint(bar.previousTitle)}
@@ -96,9 +114,10 @@ export function PlayerBar({ onOpenNowPlaying, onToggleLyrics, lyricsOpen }: Play
             </span>
           )}
         </div>
-        <div className={styles.noticeSlot}>
-          <PlayerNotice />
-        </div>
+      </div>
+
+      <div className={styles.noticeSlot}>
+        <PlayerNotice />
       </div>
 
       <div className={styles.side}>
@@ -109,6 +128,15 @@ export function PlayerBar({ onOpenNowPlaying, onToggleLyrics, lyricsOpen }: Play
           icon={<MicVocal size={20} strokeWidth={1.5} />}
           onClick={onToggleLyrics}
         />
+        {onToggleQueue === undefined ? null : (
+          <IconButton
+            label={strings.sidePanel.queue}
+            pressed={queueOpen === true}
+            className={styles.extra}
+            icon={<ListMusic size={20} strokeWidth={1.5} />}
+            onClick={onToggleQueue}
+          />
+        )}
         <IconButton
           label={strings.nowPlaying.title}
           className={styles.extra}
