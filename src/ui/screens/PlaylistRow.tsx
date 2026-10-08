@@ -100,6 +100,7 @@ function PlaylistRowBase({ song, onPlay, onRemove, onMove, canMove }: PlaylistRo
         <span className={styles.actions}>
           <IconButton
             label={strings.playlist.removeSongNamed(song.title)}
+            className={styles.remove}
             icon={<Trash2 size={18} strokeWidth={1.5} />}
             onClick={() => onRemove(song.entryId)}
           />
@@ -113,6 +114,9 @@ function PlaylistRowBase({ song, onPlay, onRemove, onMove, canMove }: PlaylistRo
             <MenuContent align="end">
               <MenuItem disabled={!canMove} onSelect={() => onMove(song.entryId)}>
                 {strings.playlist.moveTo}
+              </MenuItem>
+              <MenuItem onSelect={() => onRemove(song.entryId)}>
+                {strings.playlist.removeSong}
               </MenuItem>
             </MenuContent>
           </Menu>

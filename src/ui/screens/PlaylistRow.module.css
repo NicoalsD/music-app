@@ -156,7 +156,15 @@
 
 @media (max-width: 560px) {
   .index,
-  .duration {
+  .duration,
+  .remove {
+    display: none;
+  }
+}
+
+/* Removing and moving stay reachable from the row menu, so the title keeps its width. */
+@media (max-width: 400px) {
+  .handle {
     display: none;
   }
 }

@@ -110,6 +110,15 @@ describe('PlaylistView', () => {
     );
   });
 
+  it('removes a row from its menu, the path left on narrow screens', async () => {
+    const { h, user } = renderList();
+    await user.click(
+      screen.getByRole('button', { name: strings.playlist.rowMenuNamed('Title b') }),
+    );
+    await user.click(await screen.findByRole('menuitem', { name: strings.playlist.removeSong }));
+    expect(titles(h)).toEqual(['Title a', 'Title c']);
+  });
+
   it('removes the focused row with the Delete key', async () => {
     const { h, user } = renderList();
     rowButton('Title b').focus();
