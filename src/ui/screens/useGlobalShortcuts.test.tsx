@@ -20,7 +20,7 @@ function Host({
       <textarea aria-label="Notas" />
       <div contentEditable suppressContentEditableWarning role="textbox" aria-label="Editable" />
       <button type="button">Otro botón</button>
-      <PlayerBar />
+      <PlayerBar onOpenNowPlaying={() => undefined} onToggleLyrics={() => undefined} />
     </div>
   );
 }

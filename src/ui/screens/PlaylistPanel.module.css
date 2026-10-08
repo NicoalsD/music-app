@@ -61,3 +61,9 @@
 .dropBody {
   color: var(--ink-soft);
 }
+
+@media (max-width: 767px) {
+  .panel {
+    padding: var(--space-3);
+  }
+}

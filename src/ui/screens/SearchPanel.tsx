@@ -1,27 +1,17 @@
-import { useState, type ReactNode } from 'react';
-import { Search, X } from 'lucide-react';
+import type { ReactNode } from 'react';
 import type { AlbumSummary, ArtistSummary } from '../../providers/MusicProvider';
-import { usePlayerSnapshot, useSearch, useStore } from '../../state';
+import { usePlayerSnapshot, useStore } from '../../state';
 import type { PlayerSnapshot, SearchFilter, UseSearchResult } from '../../state';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { FilterChips } from '../components/FilterChips';
-import { IconButton } from '../components/IconButton';
 import { RevealList } from '../components/Reveal';
 import { ShojiPanel } from '../components/ShojiPanel';
 import { Spinner } from '../components/Spinner';
 import { strings } from '../i18n/es';
-import { AlbumDetail } from './AlbumDetail';
-import { ArtistDetail } from './ArtistDetail';
 import { AlbumGrid, ArtistRow } from './CatalogLists';
 import { TrackResultRow } from './TrackRows';
 import styles from './SearchPanel.module.css';
-
-export const SEARCH_INPUT_ID = 'search-input';
-
-type View =
-  | { readonly kind: 'album'; readonly id: string }
-  | { readonly kind: 'artist'; readonly id: string };
 
 const FILTER_ITEMS: ReadonlyArray<{ value: SearchFilter; label: string }> = [
   { value: 'all', label: strings.search.filters.all },
@@ -118,16 +108,17 @@ function SearchResults({ search, onOpenAlbum, onOpenArtist }: ResultsProps) {
   }
 }
 
-/** The search column: input, filters, grouped results and the album/artist detail views. */
-export function SearchPanel() {
+export interface SearchPanelProps {
+  /** Search state, owned by the shell so the top bar input and the results share it. */
+  search: UseSearchResult;
+  onOpenAlbum: (album: AlbumSummary) => void;
+  onOpenArtist: (artist: ArtistSummary) => void;
+}
+
+/** The search view: filters and grouped results for the query typed in the top bar. */
+export function SearchPanel({ search, onOpenAlbum, onOpenArtist }: SearchPanelProps) {
   const store = useStore();
   const loggedIn = usePlayerSnapshot(selectLoggedIn);
-  const search = useSearch(store.provider);
-  const [stack, setStack] = useState<readonly View[]>([]);
-  const view = stack.at(-1);
-
-  const push = (next: View) => setStack((current) => [...current, next]);
-  const pop = () => setStack((current) => current.slice(0, -1));
 
   let content: ReactNode;
   if (!loggedIn) {
@@ -145,44 +136,10 @@ export function SearchPanel() {
         <p className={styles.note}>{strings.search.localNote}</p>
       </div>
     );
-  } else if (view?.kind === 'album') {
-    content = <AlbumDetail key={view.id} albumId={view.id} onBack={pop} />;
-  } else if (view?.kind === 'artist') {
-    content = (
-      <ArtistDetail
-        key={view.id}
-        artistId={view.id}
-        onBack={pop}
-        onOpenAlbum={(album) => push({ kind: 'album', id: album.id })}
-      />
-    );
   } else {
     content = (
       <>
         <div className={styles.controls}>
-          <div className={styles.field}>
-            <Search className={styles.icon} size={18} strokeWidth={1.5} aria-hidden="true" />
-            <input
-              id={SEARCH_INPUT_ID}
-              className={styles.input}
-              type="search"
-              role="searchbox"
-              aria-label={strings.search.label}
-              placeholder={strings.search.placeholder}
-              autoComplete="off"
-              spellCheck={false}
-              value={search.text}
-              onChange={(event) => search.setText(event.target.value)}
-            />
-            {search.text === '' ? null : (
-              <IconButton
-                label={strings.search.clear}
-                icon={<X size={18} strokeWidth={1.5} />}
-                className={styles.clear}
-                onClick={() => search.setText('')}
-              />
-            )}
-          </div>
           <FilterChips
             label={strings.search.filtersLabel}
             items={FILTER_ITEMS}
@@ -191,11 +148,7 @@ export function SearchPanel() {
           />
         </div>
         <div className={styles.body} aria-live="polite" aria-label={strings.search.resultsLabel}>
-          <SearchResults
-            search={search}
-            onOpenAlbum={(album) => push({ kind: 'album', id: album.id })}
-            onOpenArtist={(artist) => push({ kind: 'artist', id: artist.id })}
-          />
+          <SearchResults search={search} onOpenAlbum={onOpenAlbum} onOpenArtist={onOpenArtist} />
         </div>
       </>
     );

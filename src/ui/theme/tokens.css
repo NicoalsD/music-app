@@ -70,6 +70,10 @@
   --focus-ring: 2px solid var(--ai);
   --focus-offset: 2px;
 
+  /* App shell */
+  --sidebar-width: 304px;
+  --sidebar-width-narrow: 232px;
+
   /* Shoji glass */
   --shoji-blur: 18px;
   --shoji-blur-raised: 24px;

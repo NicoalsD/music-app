@@ -1,5 +1,14 @@
 import { useId } from 'react';
-import { Pause, Play, Repeat, Shuffle, SkipBack, SkipForward } from 'lucide-react';
+import {
+  Maximize2,
+  MicVocal,
+  Pause,
+  Play,
+  Repeat,
+  Shuffle,
+  SkipBack,
+  SkipForward,
+} from 'lucide-react';
 import { usePlayerSnapshot, useStore } from '../../state';
 import type { PlayerSnapshot } from '../../state';
 import { Artwork } from '../components/Artwork';
@@ -33,8 +42,17 @@ const selectBar = (s: PlayerSnapshot) => {
   };
 };
 
+export interface PlayerBarProps {
+  /** Opens the Now Playing view (the cover and the expand button both call it). */
+  onOpenNowPlaying: () => void;
+  /** Shows or hides the lyrics. */
+  onToggleLyrics: () => void;
+  /** Whether the lyrics are showing, for the toggle's pressed state. */
+  lyricsOpen?: boolean | undefined;
+}
+
 /** Fixed player bar: now playing, transport, progress, volume and notices. */
-export function PlayerBar() {
+export function PlayerBar({ onOpenNowPlaying, onToggleLyrics, lyricsOpen }: PlayerBarProps) {
   const store = useStore();
   const bar = usePlayerSnapshot(selectBar, shallowEqual);
   const hintsId = useId();
@@ -46,13 +64,14 @@ export function PlayerBar() {
     <ShojiPanel as="footer" kumiko className={styles.bar} aria-label={strings.player.barLabel}>
       <div className={styles.now}>
         {bar.artwork !== null && bar.title !== null ? (
-          <Artwork
-            artwork={bar.artwork}
-            title={bar.title}
-            album={bar.album}
-            size="md"
-            className={styles.art}
-          />
+          <button
+            type="button"
+            className={styles.cover}
+            aria-label={strings.nowPlaying.open}
+            onClick={onOpenNowPlaying}
+          >
+            <Artwork artwork={bar.artwork} title={bar.title} album={bar.album} size="md" />
+          </button>
         ) : null}
         <div className={styles.info}>
           <p className={styles.title}>{bar.title ?? strings.player.nothingPlaying}</p>
@@ -144,7 +163,22 @@ export function PlayerBar() {
         </div>
       </div>
 
-      <VolumeControl className={styles.volume} />
+      <div className={styles.side}>
+        <IconButton
+          label={strings.lyrics.title}
+          pressed={lyricsOpen === true}
+          className={styles.extra}
+          icon={<MicVocal size={20} strokeWidth={1.5} />}
+          onClick={onToggleLyrics}
+        />
+        <IconButton
+          label={strings.nowPlaying.title}
+          className={styles.extra}
+          icon={<Maximize2 size={20} strokeWidth={1.5} />}
+          onClick={onOpenNowPlaying}
+        />
+        <VolumeControl />
+      </div>
 
       <p className="visually-hidden" aria-live="polite">
         {bar.status === 'playing' && bar.title !== null

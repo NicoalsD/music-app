@@ -43,10 +43,16 @@ export async function importTones(page: Page, names: readonly ToneName[]): Promi
   await page.getByLabel('Seleccionar archivos de audio').first().setInputFiles(names.map(tonePath));
 }
 
-/** Opens the playlist tab (needed on narrow screens; harmless on wide ones). */
-export async function openPlaylistTab(page: Page): Promise<void> {
-  const tab = page.getByRole('tab', { name: 'Mi lista' });
-  if (await tab.isVisible()) await tab.click();
+/**
+ * Opens the playlist view: "Biblioteca" first on narrow screens (bottom nav), then the entry of
+ * the playlist in the library sidebar. Idempotent, and it also makes that playlist the active one.
+ */
+export async function openPlaylistTab(page: Page, name = 'Mi lista'): Promise<void> {
+  const library = page
+    .getByRole('navigation', { name: 'Secciones' })
+    .getByRole('button', { name: 'Biblioteca' });
+  if (await library.isVisible()) await library.click();
+  await page.getByRole('button', { name: new RegExp(`^Abrir playlist ${name},`) }).click();
 }
 
 /** The play button of a row in the playlist. */

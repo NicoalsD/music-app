@@ -1,36 +1,133 @@
 import { useCallback, useState } from 'react';
-import * as Tabs from '@radix-ui/react-tabs';
-import { StoreProvider } from '../state';
+import type { ReactNode } from 'react';
+import { StoreProvider, useSearch, useStore } from '../state';
 import type { PlayerStore } from '../state';
 import { BackdropScene } from '../ui/components/BackdropScene';
 import { Toaster } from '../ui/components/Toaster';
 import { TooltipProvider } from '../ui/components/Tooltips';
 import { strings } from '../ui/i18n/es';
-import { AppHeader } from '../ui/screens/AppHeader';
+import { AlbumDetail } from '../ui/screens/AlbumDetail';
+import { ArtistDetail } from '../ui/screens/ArtistDetail';
+import { DetailPanel } from '../ui/screens/DetailPanel';
+import { HomeView } from '../ui/screens/HomeView';
+import { LibrarySidebar } from '../ui/screens/LibrarySidebar';
+import type { SidebarSection } from '../ui/screens/LibrarySidebar';
+import { MobileNav } from '../ui/screens/MobileNav';
+import type { MobileSection } from '../ui/screens/MobileNav';
 import { PlayerBar } from '../ui/screens/PlayerBar';
 import { PlaylistPanel } from '../ui/screens/PlaylistPanel';
-import { SEARCH_INPUT_ID, SearchPanel } from '../ui/screens/SearchPanel';
+import { SEARCH_INPUT_ID } from '../ui/screens/SearchField';
+import { SearchPanel } from '../ui/screens/SearchPanel';
 import { ShortcutsDialog } from '../ui/screens/ShortcutsDialog';
+import { TopBar } from '../ui/screens/TopBar';
 import { useDocumentTitle } from '../ui/screens/useDocumentTitle';
 import { useGlobalShortcuts } from '../ui/screens/useGlobalShortcuts';
+import { useMainNavigation } from '../ui/screens/mainView';
+import type { MainView } from '../ui/screens/mainView';
 import styles from './App.module.css';
-
-type TabValue = 'search' | 'playlist';
 
 const TOAST_OFFSET_PX = 168;
 
-function AppShell() {
-  const [tab, setTab] = useState<TabValue>('search');
-  const [helpOpen, setHelpOpen] = useState(false);
+function sidebarSection(view: MainView): SidebarSection {
+  if (view.kind === 'home') return 'home';
+  if (view.kind === 'playlist') return 'other';
+  return 'search';
+}
 
+function AppShell() {
+  const store = useStore();
+  const search = useSearch(store.provider);
+  const nav = useMainNavigation();
+  const { view } = nav;
+  const [helpOpen, setHelpOpen] = useState(false);
+  // Narrow screens only: the sidebar fills the main area while "Biblioteca" is selected.
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  // Hooks for the Now Playing view: it opens from the player bar's cover and expand button.
+  const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
+  const [lyricsOpen, setLyricsOpen] = useState(false);
+
+  const { goTo, push } = nav;
+
+  const goHome = useCallback(() => {
+    setLibraryOpen(false);
+    goTo({ kind: 'home' });
+  }, [goTo]);
+  const showSearch = useCallback(() => {
+    setLibraryOpen(false);
+    goTo({ kind: 'search' });
+  }, [goTo]);
   const goToSearch = useCallback(() => {
-    setTab('search');
+    showSearch();
     requestAnimationFrame(() => document.getElementById(SEARCH_INPUT_ID)?.focus());
-  }, []);
+  }, [showSearch]);
+  const openPlaylist = useCallback(
+    (id: string) => {
+      if (id !== store.getSnapshot().activePlaylistId) store.switchPlaylist(id);
+      setLibraryOpen(false);
+      goTo({ kind: 'playlist' });
+    },
+    [store, goTo],
+  );
+  const selectMobileSection = useCallback(
+    (section: MobileSection) => {
+      if (section === 'home') goHome();
+      else if (section === 'search') goToSearch();
+      else setLibraryOpen(true);
+    },
+    [goHome, goToSearch],
+  );
   const showHelp = useCallback(() => setHelpOpen(true), []);
+  const openNowPlaying = useCallback(() => setNowPlayingOpen(true), []);
+  const toggleLyrics = useCallback(() => setLyricsOpen((open) => !open), []);
 
   useGlobalShortcuts({ onFocusSearch: goToSearch, onShowHelp: showHelp });
   useDocumentTitle();
+
+  const mobileSection: MobileSection = libraryOpen
+    ? 'library'
+    : view.kind === 'home'
+      ? 'home'
+      : view.kind === 'playlist'
+        ? 'library'
+        : 'search';
+
+  let main: ReactNode;
+  switch (view.kind) {
+    case 'home':
+      main = <HomeView onOpenPlaylist={openPlaylist} onGoToSearch={goToSearch} />;
+      break;
+    case 'search':
+      main = (
+        <SearchPanel
+          search={search}
+          onOpenAlbum={(album) => push({ kind: 'album', id: album.id })}
+          onOpenArtist={(artist) => push({ kind: 'artist', id: artist.id })}
+        />
+      );
+      break;
+    case 'playlist':
+      main = <PlaylistPanel onGoToSearch={goToSearch} />;
+      break;
+    case 'album':
+      main = (
+        <DetailPanel>
+          <AlbumDetail key={view.id} albumId={view.id} onBack={nav.back} />
+        </DetailPanel>
+      );
+      break;
+    case 'artist':
+      main = (
+        <DetailPanel>
+          <ArtistDetail
+            key={view.id}
+            artistId={view.id}
+            onBack={nav.back}
+            onOpenAlbum={(album) => push({ kind: 'album', id: album.id })}
+          />
+        </DetailPanel>
+      );
+      break;
+  }
 
   return (
     <>
@@ -38,32 +135,36 @@ function AppShell() {
       <a className={styles.skip} href="#main">
         {strings.app.skipToContent}
       </a>
-      <div className={styles.shell}>
-        <AppHeader onShowShortcuts={showHelp} />
-        <Tabs.Root
-          className={styles.tabs}
-          value={tab}
-          onValueChange={(next) => setTab(next === 'playlist' ? 'playlist' : 'search')}
-        >
-          <Tabs.List className={styles.tabList} aria-label={strings.layout.tabsLabel}>
-            <Tabs.Trigger className={styles.tab} value="search">
-              {strings.layout.tabSearch}
-            </Tabs.Trigger>
-            <Tabs.Trigger className={styles.tab} value="playlist">
-              {strings.layout.tabPlaylist}
-            </Tabs.Trigger>
-          </Tabs.List>
-          <main id="main" className={styles.main}>
-            <Tabs.Content className={styles.pane} value="search" forceMount>
-              <SearchPanel />
-            </Tabs.Content>
-            <Tabs.Content className={styles.pane} value="playlist" forceMount>
-              <PlaylistPanel onGoToSearch={goToSearch} />
-            </Tabs.Content>
-          </main>
-        </Tabs.Root>
+      <div
+        className={styles.shell}
+        data-library-open={libraryOpen ? 'true' : 'false'}
+        data-now-playing={nowPlayingOpen ? 'true' : 'false'}
+      >
+        <TopBar
+          searchText={search.text}
+          onSearchTextChange={search.setText}
+          onActivateSearch={showSearch}
+          onGoHome={goHome}
+          homeActive={view.kind === 'home'}
+          onShowShortcuts={showHelp}
+        />
+        <LibrarySidebar
+          className={styles.sidebar}
+          section={sidebarSection(view)}
+          onGoHome={goHome}
+          onGoSearch={goToSearch}
+          onOpenPlaylist={openPlaylist}
+        />
+        <main id="main" className={styles.main}>
+          {main}
+        </main>
+        <MobileNav current={mobileSection} onSelect={selectMobileSection} />
       </div>
-      <PlayerBar />
+      <PlayerBar
+        onOpenNowPlaying={openNowPlaying}
+        onToggleLyrics={toggleLyrics}
+        lyricsOpen={lyricsOpen}
+      />
       <ShortcutsDialog open={helpOpen} onOpenChange={setHelpOpen} />
       <Toaster offset={TOAST_OFFSET_PX} />
     </>

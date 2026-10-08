@@ -13,83 +13,62 @@
   transform: none;
 }
 
+/* topbar / sidebar + main / player (the player bar is fixed, so the shell leaves room for it). */
 .shell {
-  --player-clearance: 128px;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  --player-clearance: 148px;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-3);
   height: 100dvh;
-  padding: var(--space-3) var(--space-6) var(--player-clearance);
+  padding: var(--space-3) var(--space-4) var(--player-clearance);
 }
 
-.tabs {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
+.shell > :first-child {
+  grid-column: 1 / -1;
+}
+
+.sidebar {
+  min-width: 0;
   min-height: 0;
-}
-
-.tabList {
-  display: none;
 }
 
 .main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  flex: 1;
-  gap: var(--space-5);
-  min-height: 0;
-  padding-top: var(--space-3);
-}
-
-.pane {
   display: grid;
   min-width: 0;
   min-height: 0;
 }
 
+.main > * {
+  min-width: 0;
+  min-height: 0;
+}
+
+@media (max-width: 1023px) {
+  .shell {
+    grid-template-columns: var(--sidebar-width-narrow) minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 767px) {
   .shell {
-    --player-clearance: 116px;
+    --player-clearance: 156px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: var(--space-2);
     padding: var(--space-2) var(--space-3) var(--player-clearance);
   }
 
-  .tabList {
+  /* The sidebar is the "Biblioteca" screen: hidden unless that bottom-nav item is selected. */
+  .sidebar {
+    display: none;
+  }
+
+  .shell[data-library-open='true'] .sidebar {
     display: flex;
-    gap: var(--space-2);
-    padding: var(--space-2) 0;
   }
 
-  .tab {
-    flex: 1;
-    min-height: var(--target-min);
-    border: var(--outline-width) solid var(--ink);
-    border-radius: var(--radius-sm);
-    background: var(--paper-raised);
-    color: var(--ink);
-    font-family: var(--font-display);
-    font-size: var(--text-md);
-    font-weight: var(--weight-display);
-    transition:
-      transform var(--duration-press) var(--ease-out),
-      background-color var(--duration-fast) var(--ease-out);
-  }
-
-  .tab:active {
-    transform: scale(0.97);
-  }
-
-  .tab[data-state='active'] {
-    background: var(--ink);
-    color: var(--paper);
-  }
-
-  .main {
-    grid-template-columns: minmax(0, 1fr);
-    padding-top: 0;
-  }
-
-  .pane[data-state='inactive'] {
+  .shell[data-library-open='true'] .main {
     display: none;
   }
 }

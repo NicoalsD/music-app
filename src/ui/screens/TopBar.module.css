@@ -1,0 +1,106 @@
+.bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 560px) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  overflow: hidden;
+}
+
+/* A thin strip of seigaiha along the top edge, kept subtle. */
+.band {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 6px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.name {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-display-heavy);
+}
+
+.kanji {
+  writing-mode: vertical-rl;
+  color: var(--ochre);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-display-heavy);
+  line-height: 1;
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.bar .home {
+  flex: none;
+  border: var(--outline-width) solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper-raised);
+}
+
+.bar .home[aria-current='page'] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .bar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .kanji {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .bar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .band,
+  .home,
+  .help {
+    display: none;
+  }
+
+  .name {
+    font-size: var(--text-lg);
+  }
+
+  .center {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .actions button {
+    min-height: 40px;
+    padding: 0 var(--space-3);
+    font-size: var(--text-sm);
+  }
+}

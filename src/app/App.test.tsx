@@ -17,27 +17,69 @@ function setup() {
   return { ...view, h, user: userEvent.setup() };
 }
 
+type User = ReturnType<typeof userEvent.setup>;
+
+/** Opens the playlist view through the library sidebar. */
+async function openPlaylistView(user: User, name = 'Mi lista') {
+  await user.click(
+    screen.getByRole('button', {
+      name: new RegExp(`^${strings.sidebar.openPlaylist(name, '').replace(/, $/, '')}`),
+    }),
+  );
+}
+
 describe('App', () => {
-  it('composes header, search, playlist and player bar', () => {
+  it('composes the top bar, library sidebar, home view and player bar', () => {
     setup();
     expect(screen.getByRole('heading', { level: 1, name: strings.app.name })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: strings.search.label })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: strings.playlist.title })).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: strings.search.label })).toBeInTheDocument();
+    expect(screen.getByRole('main')).toBeInTheDocument();
     expect(screen.getByRole('contentinfo', { name: strings.player.barLabel })).toBeInTheDocument();
     const header = within(appHeader());
-    expect(header.getByRole('button', { name: strings.library.importFiles })).toBeInTheDocument();
     expect(header.getByRole('button', { name: strings.spotify.connect })).toBeInTheDocument();
+    expect(header.getByRole('button', { name: strings.nav.homeButton })).toBeInTheDocument();
+    const sidebar = within(screen.getByRole('complementary', { name: strings.nav.library }));
+    expect(sidebar.getByRole('button', { name: strings.library.importFiles })).toBeInTheDocument();
+    expect(sidebar.getByRole('heading', { name: strings.nav.library })).toBeInTheDocument();
+    expect(within(screen.getByRole('main')).getByText(strings.home.emptyTitle)).toBeInTheDocument();
   });
 
-  it('offers the mobile tabs and switches between panels', async () => {
+  it('the player bar cover opens the now playing state', async () => {
+    const { h, user } = setup();
+    act(() => h.store.addLast(makeTrack('a')));
+    const shell = screen.getByRole('main').parentElement;
+    expect(shell).toHaveAttribute('data-now-playing', 'false');
+    await user.click(screen.getByRole('button', { name: strings.nowPlaying.open }));
+    expect(shell).toHaveAttribute('data-now-playing', 'true');
+  });
+
+  it('bottom nav switches between home, search and the library', async () => {
     const { user } = setup();
-    const tabs = screen.getByRole('tablist', { name: strings.layout.tabsLabel });
-    const search = within(tabs).getByRole('tab', { name: strings.layout.tabSearch });
-    const list = within(tabs).getByRole('tab', { name: strings.layout.tabPlaylist });
-    expect(search).toHaveAttribute('aria-selected', 'true');
-    await user.click(list);
-    expect(list).toHaveAttribute('aria-selected', 'true');
-    expect(search).toHaveAttribute('aria-selected', 'false');
+    const nav = within(screen.getByRole('navigation', { name: strings.nav.mobileLabel }));
+    const home = nav.getByRole('button', { name: strings.nav.home });
+    const searchItem = nav.getByRole('button', { name: strings.nav.search });
+    const library = nav.getByRole('button', { name: strings.nav.library });
+    expect(home).toHaveAttribute('aria-current', 'page');
+    await user.click(library);
+    expect(library).toHaveAttribute('aria-current', 'page');
+    expect(home).not.toHaveAttribute('aria-current');
+    await openPlaylistView(user);
+    expect(screen.getByRole('region', { name: strings.playlist.title })).toBeInTheDocument();
+    expect(library).toHaveAttribute('aria-current', 'page');
+    await user.click(searchItem);
+    expect(searchItem).toHaveAttribute('aria-current', 'page');
+    await waitFor(() => expect(screen.getByRole('searchbox')).toHaveFocus());
+    await user.click(home);
+    expect(home).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('clicking the read-only search field while logged out shows how to connect', async () => {
+    const { user } = setup();
+    await user.click(screen.getByRole('searchbox'));
+    expect(screen.getByRole('region', { name: strings.search.label })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: strings.search.loggedOutTitle }),
+    ).toBeInTheDocument();
   });
 
   it('sets the document title while playing and restores it', async () => {
@@ -70,19 +112,21 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
-  it('slash focuses the search input and switches to the search tab', async () => {
+  it('slash focuses the search input and switches to the search view', async () => {
     const { h, user } = setup();
     act(() => {
       h.auth.loggedIn = true;
       h.auth.emit('logged-in');
     });
-    await user.click(screen.getByRole('tab', { name: strings.layout.tabPlaylist }));
+    await openPlaylistView(user);
     await user.keyboard('/');
     await waitFor(() => expect(screen.getByRole('searchbox')).toHaveFocus());
-    expect(screen.getByRole('tab', { name: strings.layout.tabSearch })).toHaveAttribute(
-      'aria-selected',
-      'true',
+    const sidebar = within(screen.getByRole('complementary', { name: strings.nav.library }));
+    expect(sidebar.getByRole('button', { name: strings.nav.search })).toHaveAttribute(
+      'aria-current',
+      'page',
     );
+    expect(screen.getByRole('region', { name: strings.search.label })).toBeInTheDocument();
   });
 
   it('shortcuts are ignored while typing in the search input', async () => {
@@ -106,6 +150,7 @@ describe('App', () => {
       h.auth.loggedIn = true;
       h.auth.emit('logged-in');
     });
+    await openPlaylistView(user);
     await user.click(screen.getByRole('button', { name: strings.playlist.emptyAction }));
     await waitFor(() => expect(screen.getByRole('searchbox')).toHaveFocus());
   });
@@ -137,7 +182,8 @@ describe('App', () => {
   });
 
   it('imports dropped audio files at the end of the list', async () => {
-    const { h } = setup();
+    const { h, user } = setup();
+    await openPlaylistView(user);
     h.local.nextResult = { tracks: [makeTrack('d1')], rejected: [] };
     const panel = screen.getByRole('region', { name: strings.playlist.title });
     const file = new File(['x'], 'a.mp3', { type: 'audio/mpeg' });
@@ -156,7 +202,8 @@ describe('App', () => {
   });
 
   it('ignores drags that are not files and drops without files', async () => {
-    const { h } = setup();
+    const { h, user } = setup();
+    await openPlaylistView(user);
     const panel = screen.getByRole('region', { name: strings.playlist.title });
     fireEvent.dragEnter(panel, { dataTransfer: { types: ['text/plain'], files: [] } });
     expect(screen.queryByText(strings.playlist.dropTitle)).not.toBeInTheDocument();

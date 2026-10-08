@@ -18,8 +18,18 @@
   min-width: 0;
 }
 
-.art {
+.cover {
+  display: block;
   flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  transition: transform var(--duration-press) var(--ease-out);
+}
+
+.cover:active {
+  transform: scale(0.97);
 }
 
 .info {
@@ -118,8 +128,11 @@
   white-space: nowrap;
 }
 
-.volume {
+.side {
+  display: flex;
+  align-items: center;
   justify-self: end;
+  gap: var(--space-1);
 }
 
 @media (max-width: 1023px) {
@@ -157,7 +170,7 @@
   }
 
   .optional,
-  .volume,
+  .side,
   .hints {
     display: none;
   }
