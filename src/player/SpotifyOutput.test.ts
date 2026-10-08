@@ -241,7 +241,9 @@ function song(uri = URI): Song {
   return new Song({ ...makeTrack('a', 180_000), source: 'spotify', uri }, `entry-${uri}`);
 }
 
+/** A deliberate (not rapid) play: the clock moves past the coalescing window first. */
 async function startPlaying(env: Env, uri = URI): Promise<void> {
+  env.clock.time += 1_000;
   await env.output.load(song(uri));
   await env.output.play();
   env.events.length = 0;
@@ -531,6 +533,7 @@ describe('SpotifyOutput', () => {
         'Content-Type': 'application/json',
       });
       expect(JSON.parse(String(call?.init.body))).toEqual({ uris: [URI], position_ms: 12_000 });
+      env.clock.time += 1_000;
       await env.output.load(song('spotify:track:b'));
       await env.output.play();
       expect(JSON.parse(String(env.fetch.calls[1]?.init.body))).toEqual({
@@ -554,8 +557,10 @@ describe('SpotifyOutput', () => {
       const env = setup([noContent(), noContent(), noContent()]);
       await startPlaying(env);
       await env.output.pause();
+      env.clock.time += 1_000;
       await env.output.load(song('spotify:track:b'));
       await env.output.play();
+      env.clock.time += 1_000;
       await env.output.load(song('spotify:track:b'));
       await env.output.play();
       expect(env.fetch.calls).toHaveLength(3);
@@ -642,6 +647,7 @@ describe('SpotifyOutput', () => {
       expect(env.player().calls).toContain('seek:7000');
       env.player().emitState(state({ paused: true, position: 0, previous: [track(URI)] }));
       await env.output.seek(0);
+      env.clock.time += 1_000;
       await env.output.play();
       expect(env.fetch.calls).toHaveLength(2);
       expect(JSON.parse(String(env.fetch.calls[1]?.init.body)).position_ms).toBe(0);
@@ -769,6 +775,7 @@ describe('SpotifyOutput', () => {
       await startPlaying(env);
       env.player().emitState(state({ paused: true, position: 0, previous: [track(URI)] }));
       await env.output.seek(0);
+      env.clock.time += 1_000;
       await env.output.play();
       env.player().emitState(state({ paused: true, position: 0, previous: [track(URI)] }));
       expect(types(env)).toEqual(['ended', 'ended']);
@@ -820,6 +827,112 @@ describe('SpotifyOutput', () => {
       const env = setup();
       await env.output.init();
       env.player().emitState(null);
+      expect(types(env)).toEqual([]);
+    });
+  });
+
+  describe('rapid navigation and seeking (regressions)', () => {
+    const B = 'spotify:track:b';
+    const C = 'spotify:track:c';
+
+    it('ignores states that still describe the previous song', async () => {
+      const env = setup([noContent(), noContent()]);
+      await startPlaying(env);
+      await startPlaying(env, B);
+      env.player().emitState(state({ position: 50_000, current: track(URI) }));
+      env.player().emitState(state({ paused: true, position: 50_100, current: track(URI) }));
+      expect(types(env)).toEqual([]);
+      env.player().emitState(state({ position: 100, current: track(B) }));
+      expect(types(env)).toEqual(['progress', 'playing']);
+    });
+
+    it('accepts states of a relinked version of the song', async () => {
+      const env = setup();
+      await startPlaying(env);
+      env.player().emitState(state({ position: 1_000, current: track('spotify:track:r', URI) }));
+      expect(types(env)).toEqual(['progress', 'playing']);
+    });
+
+    it('pauses the previous song as soon as another one is loaded', async () => {
+      const env = setup();
+      await startPlaying(env);
+      env.player().calls.length = 0;
+      await env.output.load(song(B));
+      expect(env.player().calls).toEqual(['pause']);
+    });
+
+    it('coalesces rapid play requests so only the last song is sent to Spotify', async () => {
+      const env = setup([noContent(), noContent(), noContent()]);
+      await startPlaying(env);
+      await env.output.load(song(B));
+      const playB = env.output.play();
+      await settle();
+      await env.output.load(song(C));
+      const playC = env.output.play();
+      await settle();
+      env.timers.expire(250);
+      await Promise.all([playB, playC]);
+      const uris = env.fetch.calls.map((call) => JSON.parse(String(call.init.body)).uris[0]);
+      expect(uris).toEqual([URI, C]);
+    });
+
+    it('sends the first play immediately when there was no recent request', async () => {
+      const env = setup([noContent(), noContent()]);
+      await startPlaying(env);
+      env.clock.time += 5_000;
+      await startPlaying(env, B);
+      expect(env.fetch.calls).toHaveLength(2);
+      expect(env.timers.sleepLog).not.toContain(250);
+    });
+
+    it('treats a seek to the last 1.5 s as the end of the song', async () => {
+      const env = setup();
+      await startPlaying(env);
+      env.player().emitState(state({ position: 10_000 }));
+      env.events.length = 0;
+      await env.output.seek(179_000);
+      expect(types(env)).toEqual(['ended']);
+      expect(env.player().calls).not.toContain('seek:179000');
+      env.player().emitState(state({ paused: true, position: 0 }));
+      expect(types(env)).toEqual(['ended']);
+    });
+
+    it('uses the song duration for the end check before any state arrived', async () => {
+      const env = setup();
+      await startPlaying(env);
+      await env.output.seek(180_000);
+      expect(types(env)).toEqual(['ended']);
+    });
+
+    it('ignores stale pre-seek positions right after a seek', async () => {
+      const env = setup();
+      await startPlaying(env);
+      env.player().emitState(state({ position: 10_000 }));
+      env.events.length = 0;
+      await env.output.seek(90_000);
+      expect(env.player().calls).toContain('seek:90000');
+      env.player().emitState(state({ position: 11_000 }));
+      expect(types(env)).toEqual([]);
+      env.clock.time += 200;
+      env.player().emitState(state({ position: 90_200 }));
+      expect(env.events).toEqual([{ type: 'progress', positionMs: 90_200, durationMs: 180_000 }]);
+    });
+
+    it('trusts Spotify again once the seek window has passed', async () => {
+      const env = setup();
+      await startPlaying(env);
+      await env.output.seek(90_000);
+      env.clock.time += 3_000;
+      env.player().emitState(state({ position: 30_000 }));
+      expect(types(env)).toEqual(['progress', 'playing']);
+    });
+
+    it('filters stale positions from the polling fallback too', async () => {
+      const env = setup();
+      await startPlaying(env);
+      await env.output.seek(90_000);
+      env.player().state = state({ position: 12_000 });
+      await env.timers.tick();
       expect(types(env)).toEqual([]);
     });
   });

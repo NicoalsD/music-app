@@ -70,6 +70,11 @@
   --focus-ring: 2px solid var(--ai);
   --focus-offset: 2px;
 
+  /* App shell */
+  --sidebar-width: 304px;
+  --sidebar-width-narrow: 232px;
+  --side-panel-width: 340px;
+
   /* Shoji glass */
   --shoji-blur: 18px;
   --shoji-blur-raised: 24px;
@@ -105,4 +110,42 @@
   --duration-base: 220ms;
   --duration-slow: 400ms;
   --duration-sun: 600ms;
+}
+
+/* Now Playing print colours. Registered so a song change cross-fades them (600ms) instead of
+   snapping; the values are set on the Now Playing root from the cover palette. */
+@property --np-field {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #22306a;
+}
+
+@property --np-sun {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #b4432e;
+}
+
+@property --np-accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #6fa58c;
+}
+
+@property --np-text {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #f8f4ea;
+}
+
+@property --np-text-soft {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #d9d4c8;
+}
+
+@property --np-panel {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #343f78;
 }

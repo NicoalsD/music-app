@@ -16,3 +16,18 @@ export type {
 } from './PlayerStore';
 export { StoreProvider, useStore, usePlayerSnapshot, useProgress } from './usePlayer';
 export * from './search';
+export {
+  LyricsProviderContext,
+  LyricsProviderScope,
+  useLyricsProvider,
+  useLyrics,
+  useLyricsFrom,
+} from './useLyrics';
+export type { LyricsStatus, UseLyricsResult, LyricsProviderProps } from './useLyrics';
+export {
+  useHomeFeed,
+  FeedProviderScope,
+  useFeedProvider,
+  FEED_CACHE_TTL_MS,
+} from './home/useHomeFeed';
+export type { HomeFeed, FeedSection, FeedSectionStatus } from './home/useHomeFeed';

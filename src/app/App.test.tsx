@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { makeTrack } from '../core/test-utils/fakes';
 import { createHarness, spotifyTrack } from '../state/test-utils/harness';
 import { strings } from '../ui/i18n/es';
+import { FakeLyricsProvider } from '../state/test-utils/FakeLyricsProvider';
 import { App } from './App';
 
 function appHeader(): HTMLElement {
@@ -13,31 +14,167 @@ function appHeader(): HTMLElement {
 
 function setup() {
   const h = createHarness();
-  const view = render(<App store={h.store} />);
+  const view = render(<App store={h.store} lyricsProvider={new FakeLyricsProvider()} />);
   return { ...view, h, user: userEvent.setup() };
 }
 
-describe('App', () => {
-  it('composes header, search, playlist and player bar', () => {
-    setup();
-    expect(screen.getByRole('heading', { level: 1, name: strings.app.name })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: strings.search.label })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: strings.playlist.title })).toBeInTheDocument();
-    expect(screen.getByRole('contentinfo', { name: strings.player.barLabel })).toBeInTheDocument();
-    const header = within(appHeader());
-    expect(header.getByRole('button', { name: strings.library.importFiles })).toBeInTheDocument();
-    expect(header.getByRole('button', { name: strings.spotify.connect })).toBeInTheDocument();
+type User = ReturnType<typeof userEvent.setup>;
+
+/** Opens the playlist view through the library sidebar. */
+async function openPlaylistView(user: User, name = 'Mi lista') {
+  await user.click(
+    screen.getByRole('button', {
+      name: new RegExp(`^${strings.sidebar.openPlaylist(name, '').replace(/, $/, '')}`),
+    }),
+  );
+}
+
+/** Makes the given min-width queries match, as a desktop browser would. */
+function mockViewport(width: number) {
+  vi.spyOn(window, 'matchMedia').mockImplementation(
+    (query: string) =>
+      ({
+        matches: (() => {
+          const min = /min-width: (\d+)px/.exec(query);
+          const max = /max-width: (\d+)px/.exec(query);
+          if (min?.[1] !== undefined) return width >= Number(min[1]);
+          if (max?.[1] !== undefined) return width <= Number(max[1]);
+          return false;
+        })(),
+        media: query,
+        onchange: null,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        dispatchEvent: () => false,
+      }) as MediaQueryList,
+  );
+}
+
+describe('App side panel', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
   });
 
-  it('offers the mobile tabs and switches between panels', async () => {
+  it('shows no side panel and opens Now Playing from "Letra" on narrow screens', async () => {
     const { user } = setup();
-    const tabs = screen.getByRole('tablist', { name: strings.layout.tabsLabel });
-    const search = within(tabs).getByRole('tab', { name: strings.layout.tabSearch });
-    const list = within(tabs).getByRole('tab', { name: strings.layout.tabPlaylist });
-    expect(search).toHaveAttribute('aria-selected', 'true');
-    await user.click(list);
-    expect(list).toHaveAttribute('aria-selected', 'true');
-    expect(search).toHaveAttribute('aria-selected', 'false');
+    expect(
+      screen.queryByRole('complementary', { name: strings.sidePanel.label }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: strings.sidePanel.queue })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: strings.lyrics.title }));
+    expect(
+      await screen.findByRole('dialog', { name: strings.nowPlaying.title }),
+    ).toBeInTheDocument();
+  });
+
+  it('opens on the lyrics on wide screens and toggles tabs from the player', async () => {
+    mockViewport(1440);
+    const { user } = setup();
+    const panel = screen.getByRole('complementary', { name: strings.sidePanel.label });
+    expect(within(panel).getByRole('tab', { name: strings.sidePanel.lyrics })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    const letra = screen.getByRole('button', { name: strings.lyrics.title });
+    const cola = screen.getByRole('button', { name: strings.sidePanel.queue });
+    expect(letra).toHaveAttribute('aria-pressed', 'true');
+    await user.click(cola);
+    expect(within(panel).getByRole('tab', { name: strings.sidePanel.queue })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(localStorage.getItem('music-app:v1:side-panel')).toBe('queue');
+    await user.click(cola);
+    expect(
+      screen.queryByRole('complementary', { name: strings.sidePanel.label }),
+    ).not.toBeInTheDocument();
+    expect(localStorage.getItem('music-app:v1:side-panel')).toBe('none');
+    expect(screen.getByRole('main').parentElement).toHaveAttribute('data-now-playing', 'false');
+  });
+
+  it('restores the saved tab and closes with the panel button', async () => {
+    mockViewport(1440);
+    localStorage.setItem('music-app:v1:side-panel', 'queue');
+    const { user } = setup();
+    const panel = screen.getByRole('complementary', { name: strings.sidePanel.label });
+    expect(within(panel).getByRole('tab', { name: strings.sidePanel.queue })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await user.click(within(panel).getByRole('button', { name: strings.sidePanel.close }));
+    expect(
+      screen.queryByRole('complementary', { name: strings.sidePanel.label }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('starts closed on mid screens, where the panel is a drawer', async () => {
+    mockViewport(1100);
+    const { user } = setup();
+    expect(
+      screen.queryByRole('complementary', { name: strings.sidePanel.label }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: strings.lyrics.title }));
+    expect(
+      screen.getByRole('complementary', { name: strings.sidePanel.label }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('App', () => {
+  it('composes the top bar, library sidebar, home view and player bar', () => {
+    setup();
+    expect(screen.getByRole('heading', { level: 1, name: strings.app.name })).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: strings.search.label })).toBeInTheDocument();
+    expect(screen.getByRole('main')).toBeInTheDocument();
+    expect(screen.getByRole('contentinfo', { name: strings.player.barLabel })).toBeInTheDocument();
+    const header = within(appHeader());
+    expect(header.getByRole('button', { name: strings.spotify.connect })).toBeInTheDocument();
+    expect(header.getByRole('button', { name: strings.nav.homeButton })).toBeInTheDocument();
+    const sidebar = within(screen.getByRole('complementary', { name: strings.nav.library }));
+    expect(sidebar.getByRole('button', { name: strings.library.importFiles })).toBeInTheDocument();
+    expect(sidebar.getByRole('heading', { name: strings.nav.library })).toBeInTheDocument();
+    expect(within(screen.getByRole('main')).getByText(strings.home.emptyTitle)).toBeInTheDocument();
+  });
+
+  it('the player bar cover opens the now playing state', async () => {
+    const { h, user } = setup();
+    act(() => h.store.addLast(makeTrack('a')));
+    const shell = screen.getByRole('main').parentElement;
+    expect(shell).toHaveAttribute('data-now-playing', 'false');
+    await user.click(screen.getByRole('button', { name: strings.nowPlaying.open }));
+    expect(shell).toHaveAttribute('data-now-playing', 'true');
+  });
+
+  it('bottom nav switches between home, search and the library', async () => {
+    const { user } = setup();
+    const nav = within(screen.getByRole('navigation', { name: strings.nav.mobileLabel }));
+    const home = nav.getByRole('button', { name: strings.nav.home });
+    const searchItem = nav.getByRole('button', { name: strings.nav.search });
+    const library = nav.getByRole('button', { name: strings.nav.library });
+    expect(home).toHaveAttribute('aria-current', 'page');
+    await user.click(library);
+    expect(library).toHaveAttribute('aria-current', 'page');
+    expect(home).not.toHaveAttribute('aria-current');
+    await openPlaylistView(user);
+    expect(screen.getByRole('region', { name: strings.playlist.title })).toBeInTheDocument();
+    expect(library).toHaveAttribute('aria-current', 'page');
+    await user.click(searchItem);
+    expect(searchItem).toHaveAttribute('aria-current', 'page');
+    await waitFor(() => expect(screen.getByRole('searchbox')).toHaveFocus());
+    await user.click(home);
+    expect(home).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('clicking the read-only search field while logged out shows how to connect', async () => {
+    const { user } = setup();
+    await user.click(screen.getByRole('searchbox'));
+    expect(screen.getByRole('region', { name: strings.search.label })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: strings.search.loggedOutTitle }),
+    ).toBeInTheDocument();
   });
 
   it('sets the document title while playing and restores it', async () => {
@@ -70,19 +207,21 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
-  it('slash focuses the search input and switches to the search tab', async () => {
+  it('slash focuses the search input and switches to the search view', async () => {
     const { h, user } = setup();
     act(() => {
       h.auth.loggedIn = true;
       h.auth.emit('logged-in');
     });
-    await user.click(screen.getByRole('tab', { name: strings.layout.tabPlaylist }));
+    await openPlaylistView(user);
     await user.keyboard('/');
     await waitFor(() => expect(screen.getByRole('searchbox')).toHaveFocus());
-    expect(screen.getByRole('tab', { name: strings.layout.tabSearch })).toHaveAttribute(
-      'aria-selected',
-      'true',
+    const sidebar = within(screen.getByRole('complementary', { name: strings.nav.library }));
+    expect(sidebar.getByRole('button', { name: strings.nav.search })).toHaveAttribute(
+      'aria-current',
+      'page',
     );
+    expect(screen.getByRole('region', { name: strings.search.label })).toBeInTheDocument();
   });
 
   it('shortcuts are ignored while typing in the search input', async () => {
@@ -106,6 +245,7 @@ describe('App', () => {
       h.auth.loggedIn = true;
       h.auth.emit('logged-in');
     });
+    await openPlaylistView(user);
     await user.click(screen.getByRole('button', { name: strings.playlist.emptyAction }));
     await waitFor(() => expect(screen.getByRole('searchbox')).toHaveFocus());
   });
@@ -137,7 +277,8 @@ describe('App', () => {
   });
 
   it('imports dropped audio files at the end of the list', async () => {
-    const { h } = setup();
+    const { h, user } = setup();
+    await openPlaylistView(user);
     h.local.nextResult = { tracks: [makeTrack('d1')], rejected: [] };
     const panel = screen.getByRole('region', { name: strings.playlist.title });
     const file = new File(['x'], 'a.mp3', { type: 'audio/mpeg' });
@@ -156,7 +297,8 @@ describe('App', () => {
   });
 
   it('ignores drags that are not files and drops without files', async () => {
-    const { h } = setup();
+    const { h, user } = setup();
+    await openPlaylistView(user);
     const panel = screen.getByRole('region', { name: strings.playlist.title });
     fireEvent.dragEnter(panel, { dataTransfer: { types: ['text/plain'], files: [] } });
     expect(screen.queryByText(strings.playlist.dropTitle)).not.toBeInTheDocument();

@@ -121,6 +121,24 @@ describe('PlayerStore adding songs', () => {
     expect(h.localOutput.calls).toContain('load:blob:n@0');
   });
 
+  it('playNow on the track that is already current resumes it without a duplicate entry', async () => {
+    const h = createHarness();
+    seed(h, 'a', 'b');
+    h.store.playEntry(h.store.getSnapshot().songs[0]?.entryId ?? '');
+    await settle();
+    h.store.togglePlay();
+    await settle();
+    expect(h.store.getSnapshot().player.status).toBe('paused');
+    h.store.playNow(makeTrack('a'));
+    await settle();
+    expect(titles(h)).toEqual(['Title a', 'Title b']);
+    expect(h.store.getSnapshot().player.status).toBe('playing');
+    h.store.playNow(makeTrack('a'));
+    await settle();
+    expect(titles(h)).toEqual(['Title a', 'Title b']);
+    expect(h.store.getSnapshot().player.status).toBe('playing');
+  });
+
   it('adds whole albums at the end and at the start keeping order', () => {
     const h = createHarness();
     seed(h, 'm');
@@ -388,6 +406,162 @@ describe('PlayerStore playlists', () => {
     expect(() =>
       h.store.renamePlaylist(h.store.getSnapshot().activePlaylistId, 'x'.repeat(61)),
     ).toThrow('too-long');
+  });
+});
+
+describe('PlayerStore addToPlaylist', () => {
+  it('appends to another playlist without switching or interrupting playback', async () => {
+    const h = createHarness();
+    seed(h, 'a', 'b');
+    const firstId = h.store.getSnapshot().activePlaylistId;
+    const secondId = await h.store.createPlaylist('Rock');
+    h.store.switchPlaylist(firstId);
+    await settle();
+    h.store.togglePlay();
+    await settle();
+    const before = h.store.getSnapshot();
+    expect(before.player.status).toBe('playing');
+
+    h.store.addToPlaylist(secondId, makeTrack('z'));
+    await settle();
+
+    const after = h.store.getSnapshot();
+    expect(after.activePlaylistId).toBe(firstId);
+    expect(titles(h)).toEqual(['Title a', 'Title b']);
+    expect(after.currentEntryId).toBe(before.currentEntryId);
+    expect(after.player.status).toBe('playing');
+    expect(after.playlists.map((p) => [p.name, p.size])).toEqual([
+      ['Mi lista', 2],
+      ['Rock', 1],
+    ]);
+    expect(h.notifier.notices.at(-1)).toBe(strings.dnd.addedToPlaylist('Rock'));
+  });
+
+  it('appends at the end of the active playlist when it is the target', () => {
+    const h = createHarness();
+    seed(h, 'a');
+    const id = h.store.getSnapshot().activePlaylistId;
+    h.store.addToPlaylist(id, makeTrack('b'));
+    expect(titles(h)).toEqual(['Title a', 'Title b']);
+    expect(h.notifier.notices.at(-1)).toBe(strings.dnd.addedToPlaylist('Mi lista'));
+  });
+
+  it('keeps the track when the target playlist is later opened', async () => {
+    const h = createHarness();
+    const firstId = h.store.getSnapshot().activePlaylistId;
+    const secondId = await h.store.createPlaylist('Rock');
+    h.store.switchPlaylist(firstId);
+    await settle();
+    h.store.addToPlaylist(secondId, makeTrack('z'));
+    h.store.switchPlaylist(secondId);
+    await settle();
+    expect(titles(h)).toEqual(['Title z']);
+  });
+
+  it('throws for an unknown playlist and does not notify', () => {
+    const h = createHarness();
+    expect(() => h.store.addToPlaylist('missing', makeTrack('z'))).toThrow();
+    expect(h.notifier.notices).toEqual([]);
+  });
+});
+
+describe('PlayerStore favorites', () => {
+  const favoritesOf = (h: Harness) =>
+    h.store.getSnapshot().playlists.find((p) => p.kind === 'favorites');
+
+  it('the first like creates "Favoritos" pinned first, without switching playlists', async () => {
+    const h = createHarness();
+    seed(h, 'a');
+    h.store.togglePlay();
+    await settle();
+    const before = h.store.getSnapshot();
+
+    h.store.toggleFavorite(makeTrack('a'));
+    await settle();
+
+    const after = h.store.getSnapshot();
+    expect(after.playlists.map((p) => [p.name, p.kind, p.size])).toEqual([
+      [strings.favorites.playlistName, 'favorites', 1],
+      ['Mi lista', 'regular', 1],
+    ]);
+    expect(after.activePlaylistId).toBe(before.activePlaylistId);
+    expect(after.player.status).toBe('playing');
+    expect(after.favoriteTrackIds.has('a')).toBe(true);
+    expect(h.notifier.notices.at(-1)).toBe(strings.favorites.added('Title a'));
+  });
+
+  it('toggling again removes the like and keeps the empty Favoritos playlist', () => {
+    const h = createHarness();
+    h.store.toggleFavorite(makeTrack('a'));
+    h.store.toggleFavorite(makeTrack('a'));
+    const s = h.store.getSnapshot();
+    expect(s.favoriteTrackIds.has('a')).toBe(false);
+    expect(favoritesOf(h)?.size).toBe(0);
+    expect(h.notifier.notices.at(-1)).toBe(strings.favorites.removed('Title a'));
+  });
+
+  it('likes the current song of the active playlist by entry id', () => {
+    const h = createHarness();
+    seed(h, 'a', 'b');
+    h.store.toggleFavoriteEntry(entryIdAt(h, 1));
+    expect(h.store.getSnapshot().favoriteTrackIds).toEqual(new Set(['b']));
+    h.store.toggleFavoriteEntry('missing');
+    expect(h.store.getSnapshot().favoriteTrackIds).toEqual(new Set(['b']));
+  });
+
+  it('removing a song from the active Favoritos list also removes the like', async () => {
+    const h = createHarness();
+    h.store.toggleFavorite(makeTrack('a'));
+    const favoritesId = favoritesOf(h)?.id ?? '';
+    h.store.switchPlaylist(favoritesId);
+    await settle();
+    h.store.remove(entryIdAt(h, 0));
+    expect(h.store.getSnapshot().favoriteTrackIds.has('a')).toBe(false);
+  });
+
+  it('unliking the playing song while Favoritos is active moves on like any removal', async () => {
+    const h = createHarness();
+    h.store.toggleFavorite(makeTrack('a'));
+    h.store.toggleFavorite(makeTrack('b'));
+    h.store.switchPlaylist(favoritesOf(h)?.id ?? '');
+    await settle();
+    h.store.playEntry(entryIdAt(h, 0));
+    await settle();
+    h.store.toggleFavorite(makeTrack('a'));
+    await settle();
+    const s = h.store.getSnapshot();
+    expect(titles(h)).toEqual(['Title b']);
+    expect(s.songs[0]?.isCurrent).toBe(true);
+    expect(s.player.status).toBe('playing');
+  });
+
+  it('dropping a song on Favoritos likes it once instead of duplicating it', () => {
+    const h = createHarness();
+    h.store.toggleFavorite(makeTrack('a'));
+    const favoritesId = favoritesOf(h)?.id ?? '';
+    h.store.addToPlaylist(favoritesId, makeTrack('a'));
+    h.store.addToPlaylist(favoritesId, makeTrack('b'));
+    expect(favoritesOf(h)?.size).toBe(2);
+    expect(h.store.getSnapshot().favoriteTrackIds).toEqual(new Set(['a', 'b']));
+  });
+
+  it('refuses to rename or delete Favoritos without throwing', async () => {
+    const h = createHarness();
+    h.store.toggleFavorite(makeTrack('a'));
+    const favoritesId = favoritesOf(h)?.id ?? '';
+    h.store.renamePlaylist(favoritesId, 'Otra');
+    expect(await h.store.deletePlaylist(favoritesId)).toBe(false);
+    expect(favoritesOf(h)?.name).toBe(strings.favorites.playlistName);
+  });
+
+  it('keeps the same favorites set reference until the likes change', () => {
+    const h = createHarness();
+    h.store.toggleFavorite(makeTrack('a'));
+    const first = h.store.getSnapshot().favoriteTrackIds;
+    h.store.addLast(makeTrack('x'));
+    expect(h.store.getSnapshot().favoriteTrackIds).toBe(first);
+    h.store.toggleFavorite(makeTrack('b'));
+    expect(h.store.getSnapshot().favoriteTrackIds).not.toBe(first);
   });
 });
 

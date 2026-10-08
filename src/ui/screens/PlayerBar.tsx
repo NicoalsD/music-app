@@ -1,14 +1,16 @@
 import { useId } from 'react';
-import { Pause, Play, Repeat, Shuffle, SkipBack, SkipForward } from 'lucide-react';
-import { usePlayerSnapshot, useStore } from '../../state';
+import { ListMusic, Maximize2, MicVocal } from 'lucide-react';
+import { usePlayerSnapshot } from '../../state';
 import type { PlayerSnapshot } from '../../state';
 import { Artwork } from '../components/Artwork';
 import { IconButton } from '../components/IconButton';
 import { ShojiPanel } from '../components/ShojiPanel';
-import { Spinner } from '../components/Spinner';
+import { cx } from '../cx';
 import { strings } from '../i18n/es';
+import { FavoriteButton } from './FavoriteButton';
 import { PlayerNotice } from './PlayerNotice';
 import { PlayerProgress } from './PlayerProgress';
+import { TransportControls } from './TransportControls';
 import { VolumeControl } from './VolumeControl';
 import { shallowEqual } from './shallowEqual';
 import styles from './PlayerBar.module.css';
@@ -19,9 +21,8 @@ const selectBar = (s: PlayerSnapshot) => {
   const next = s.songs[s.currentIndex + 1];
   return {
     status: s.player.status,
-    repeat: s.player.repeat,
-    shuffle: s.player.shuffle,
-    isEmpty: s.songs.length === 0,
+    entryId: current === undefined ? null : current.entryId,
+    trackId: current === undefined ? null : current.trackId,
     title: current === undefined ? null : current.title,
     artists: current === undefined ? '' : current.artistLabel,
     album: current === undefined ? '' : current.albumName,
@@ -33,26 +34,50 @@ const selectBar = (s: PlayerSnapshot) => {
   };
 };
 
-/** Fixed player bar: now playing, transport, progress, volume and notices. */
-export function PlayerBar() {
-  const store = useStore();
+export interface PlayerBarProps {
+  /** Opens the Now Playing view (the cover and the expand button both call it). */
+  onOpenNowPlaying: () => void;
+  /** Shows or hides the lyrics. */
+  onToggleLyrics: () => void;
+  /** Whether the lyrics are showing, for the toggle's pressed state. */
+  lyricsOpen?: boolean | undefined;
+  /** Shows or hides the queue. The button is only rendered when this is given. */
+  onToggleQueue?: (() => void) | undefined;
+  /** Whether the queue is showing, for the toggle's pressed state. */
+  queueOpen?: boolean | undefined;
+  /** Grid placement from the shell. */
+  className?: string | undefined;
+}
+
+/** Player strip docked in the shell grid: now playing, transport, progress, volume and notices. */
+export function PlayerBar({
+  onOpenNowPlaying,
+  onToggleLyrics,
+  lyricsOpen,
+  onToggleQueue,
+  queueOpen,
+  className,
+}: PlayerBarProps) {
   const bar = usePlayerSnapshot(selectBar, shallowEqual);
   const hintsId = useId();
-  const busy = bar.status === 'loading';
-  const playing = bar.status === 'playing' || busy;
   const meta = [bar.artists, bar.album].filter((part) => part !== '').join(' · ');
 
   return (
-    <ShojiPanel as="footer" kumiko className={styles.bar} aria-label={strings.player.barLabel}>
+    <ShojiPanel
+      as="footer"
+      className={cx(styles.bar, className)}
+      aria-label={strings.player.barLabel}
+    >
       <div className={styles.now}>
         {bar.artwork !== null && bar.title !== null ? (
-          <Artwork
-            artwork={bar.artwork}
-            title={bar.title}
-            album={bar.album}
-            size="md"
-            className={styles.art}
-          />
+          <button
+            type="button"
+            className={styles.cover}
+            aria-label={strings.nowPlaying.open}
+            onClick={onOpenNowPlaying}
+          >
+            <Artwork artwork={bar.artwork} title={bar.title} album={bar.album} size="sm" />
+          </button>
         ) : null}
         <div className={styles.info}>
           <p className={styles.title}>{bar.title ?? strings.player.nothingPlaying}</p>
@@ -70,64 +95,24 @@ export function PlayerBar() {
             </a>
           ) : null}
         </div>
+        {bar.entryId !== null && bar.trackId !== null && bar.title !== null ? (
+          <FavoriteButton
+            entry={{ entryId: bar.entryId, trackId: bar.trackId, title: bar.title }}
+            size={18}
+            className={styles.favorite}
+          />
+        ) : null}
       </div>
 
       <div className={styles.center}>
-        <div className={styles.controls}>
-          <IconButton
-            label={strings.player.shuffle}
-            pressed={bar.shuffle}
-            className={styles.optional}
-            icon={<Shuffle size={20} strokeWidth={1.5} />}
-            onClick={() => store.toggleShuffle()}
-          />
-          <IconButton
-            label={strings.player.previous}
-            aria-describedby={bar.previousTitle === null ? undefined : `${hintsId}-prev`}
-            icon={<SkipBack size={22} strokeWidth={1.5} />}
-            onClick={() => store.previous()}
-            disabled={bar.isEmpty}
-          />
-          <IconButton
-            label={playing ? strings.player.pause : strings.player.play}
-            variant="primary"
-            className={styles.play}
-            aria-busy={busy}
-            disabled={bar.isEmpty}
-            icon={
-              busy ? (
-                <Spinner size={22} label={strings.player.loadingTrack} className={styles.spinner} />
-              ) : playing ? (
-                <Pause size={22} strokeWidth={1.5} />
-              ) : (
-                <Play size={22} strokeWidth={1.5} />
-              )
-            }
-            onClick={() => store.togglePlay()}
-          />
-          <IconButton
-            label={strings.player.next}
-            aria-describedby={bar.nextTitle === null ? undefined : `${hintsId}-next`}
-            icon={<SkipForward size={22} strokeWidth={1.5} />}
-            onClick={() => store.next()}
-            disabled={bar.isEmpty}
-          />
-          <span className={`${styles.optional} ${styles.repeat}`}>
-            <IconButton
-              label={strings.player.repeat[bar.repeat]}
-              pressed={bar.repeat !== 'off'}
-              icon={<Repeat size={20} strokeWidth={1.5} />}
-              onClick={() => store.cycleRepeat()}
-            />
-            {bar.repeat === 'one' ? (
-              <span className={styles.badge} aria-hidden="true">
-                {strings.player.repeatOneBadge}
-              </span>
-            ) : null}
-          </span>
-        </div>
+        <TransportControls
+          className={styles.controls}
+          secondaryClassName={styles.optional}
+          previousHintId={bar.previousTitle === null ? undefined : `${hintsId}-prev`}
+          nextHintId={bar.nextTitle === null ? undefined : `${hintsId}-next`}
+        />
         <PlayerProgress className={styles.progress} />
-        <div className={styles.hints}>
+        <div className={cx(styles.hints, 'visually-hidden')}>
           {bar.previousTitle === null ? null : (
             <span id={`${hintsId}-prev`} className={styles.hint}>
               {strings.player.previousHint(bar.previousTitle)}
@@ -139,12 +124,37 @@ export function PlayerBar() {
             </span>
           )}
         </div>
-        <div className={styles.noticeSlot}>
-          <PlayerNotice />
-        </div>
       </div>
 
-      <VolumeControl className={styles.volume} />
+      <div className={styles.noticeSlot}>
+        <PlayerNotice />
+      </div>
+
+      <div className={styles.side}>
+        <IconButton
+          label={strings.lyrics.title}
+          pressed={lyricsOpen === true}
+          className={styles.extra}
+          icon={<MicVocal size={20} strokeWidth={1.5} />}
+          onClick={onToggleLyrics}
+        />
+        {onToggleQueue === undefined ? null : (
+          <IconButton
+            label={strings.sidePanel.queue}
+            pressed={queueOpen === true}
+            className={styles.extra}
+            icon={<ListMusic size={20} strokeWidth={1.5} />}
+            onClick={onToggleQueue}
+          />
+        )}
+        <IconButton
+          label={strings.nowPlaying.title}
+          className={styles.extra}
+          icon={<Maximize2 size={20} strokeWidth={1.5} />}
+          onClick={onOpenNowPlaying}
+        />
+        <VolumeControl />
+      </div>
 
       <p className="visually-hidden" aria-live="polite">
         {bar.status === 'playing' && bar.title !== null

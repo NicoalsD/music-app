@@ -1,7 +1,7 @@
 import type { StorageLike } from '../auth/TokenStore';
 import type { Clock, IdGenerator } from '../core/ports';
 import { PlaylistLibrary } from '../core/PlaylistLibrary';
-import type { RepeatMode } from '../core/Playlist';
+import type { PlaylistKind, RepeatMode } from '../core/Playlist';
 import { Song } from '../core/Song';
 import type { Artwork, SongSource, Track } from '../core/Song';
 
@@ -26,6 +26,8 @@ export interface PersistedEntry {
 export interface PersistedPlaylist {
   readonly id: string;
   readonly name: string;
+  /** Missing in data saved before favorites existed; read as 'regular'. */
+  readonly kind?: PlaylistKind;
   readonly entries: readonly PersistedEntry[];
   readonly currentEntryId: string | null;
 }
@@ -106,12 +108,17 @@ function isEntry(value: unknown): value is PersistedEntry {
   );
 }
 
+function isPlaylistKind(value: unknown): value is PlaylistKind | undefined {
+  return value === undefined || value === 'regular' || value === 'favorites';
+}
+
 function isPlaylist(value: unknown): value is PersistedPlaylist {
   if (!isRecord(value)) return false;
   const name = value['name'];
   const entries = value['entries'];
   return (
     isString(value['id']) &&
+    isPlaylistKind(value['kind']) &&
     isString(name) &&
     name.trim() !== '' &&
     Array.isArray(entries) &&
@@ -126,6 +133,7 @@ export function isPersistedState(value: unknown): value is PersistedState {
   const playlists = value['playlists'];
   if (!Array.isArray(playlists) || playlists.length === 0 || !playlists.every(isPlaylist))
     return false;
+  if (playlists.filter((p) => p.kind === 'favorites').length > 1) return false;
   const activeId = value['activePlaylistId'];
   return (
     isString(activeId) &&
@@ -153,6 +161,7 @@ export function serializeState(
   const playlists = library.all().map((playlist) => ({
     id: playlist.id,
     name: playlist.name,
+    kind: playlist.kind,
     entries: playlist.songs().map((song) => ({
       entryId: song.entryId,
       track: toPersistedTrack(song),
@@ -233,7 +242,7 @@ export function restoreState(state: PersistedState | null, deps: RestoreDeps): R
   const library = new PlaylistLibrary({ ...deps, createDefault: false });
   let activeId: string | null = null;
   for (const saved of state.playlists) {
-    const playlist = library.create(saved.name);
+    const playlist = library.create(saved.name, saved.kind ?? 'regular');
     if (saved.id === state.activePlaylistId) activeId = playlist.id;
     for (const entry of saved.entries) {
       playlist.restore(new Song(entry.track, entry.entryId), playlist.size);

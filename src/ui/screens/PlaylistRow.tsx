@@ -9,26 +9,40 @@ import { Artwork } from '../components/Artwork';
 import { Hanko } from '../components/Hanko';
 import { IconButton } from '../components/IconButton';
 import { LanternCord } from '../components/LanternCord';
-import { Menu, MenuContent, MenuItem, MenuTrigger } from '../components/Menu';
+import { Menu, MenuContent, MenuTrigger } from '../components/Menu';
+import { InsertionLine } from '../dnd/InsertionLine';
+import { entrySortId } from '../dnd/dragData';
+import type { MoveTarget } from '../dnd/useEntryMover';
 import { formatTime } from '../format';
 import { strings } from '../i18n/es';
+import { FavoriteButton } from './FavoriteButton';
+import { RowMenuItems } from './RowMenuItems';
 import styles from './PlaylistRow.module.css';
 
 export interface PlaylistRowProps {
   song: SongView;
   onPlay: (entryId: string) => void;
   onRemove: (entryId: string) => void;
-  /** Opens the "move to position" dialog for this entry. */
-  onMove: (entryId: string) => void;
-  /** The move action needs at least two songs. */
-  canMove: boolean;
+  /** Moves this entry (row menu). */
+  onMove: (entryId: string, target: MoveTarget) => void;
+  /** Alt+Arrow/Home/End on the row; returns true when the key was handled. */
+  onRowKeyDown: (entryId: string, event: KeyboardEvent) => boolean;
+  /** Draws the insertion line above (`before`) or below (`after`) this row. */
+  insertion: 'before' | 'after' | null;
 }
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 const DURATION_S = 0.22;
 
 /** One lantern on the cord: a sortable, animated row of the playlist. */
-function PlaylistRowBase({ song, onPlay, onRemove, onMove, canMove }: PlaylistRowProps) {
+function PlaylistRowBase({
+  song,
+  onPlay,
+  onRemove,
+  onMove,
+  onRowKeyDown,
+  insertion,
+}: PlaylistRowProps) {
   const reduce = useReducedMotion();
   const {
     attributes,
@@ -39,13 +53,15 @@ function PlaylistRowBase({ song, onPlay, onRemove, onMove, canMove }: PlaylistRo
     transition,
     isDragging,
   } = useSortable({
-    id: song.entryId,
+    id: entrySortId('list', song.entryId),
+    data: { type: 'entry', entryId: song.entryId, scope: 'list' },
   });
   const meta = [song.artistLabel || strings.library.unknownArtist, song.albumName]
     .filter((p) => p !== '')
     .join(' · ');
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (onRowKeyDown(song.entryId, event)) return;
     if (event.key !== 'Delete' || event.defaultPrevented) return;
     event.preventDefault();
     onRemove(song.entryId);
@@ -65,13 +81,18 @@ function PlaylistRowBase({ song, onPlay, onRemove, onMove, canMove }: PlaylistRo
       transition={{ duration: reduce ? 0.1 : DURATION_S, ease: EASE_OUT }}
     >
       <div
+        {...listeners}
         ref={setNodeRef}
         className={styles.row}
+        data-entry-key={entrySortId('list', song.entryId)}
+        data-song-index={song.index}
         style={{ transform: CSS.Transform.toString(transform), transition }}
         data-current={song.isCurrent ? 'true' : 'false'}
         data-dragging={isDragging ? 'true' : 'false'}
+        data-row-hover-scope
         onKeyDown={onKeyDown}
       >
+        {insertion === null ? null : <InsertionLine edge={insertion} />}
         <span className={`${styles.index} tabular`} aria-hidden="true">
           {song.index + 1}
         </span>
@@ -81,6 +102,7 @@ function PlaylistRowBase({ song, onPlay, onRemove, onMove, canMove }: PlaylistRo
           className={styles.main}
           aria-current={song.isCurrent ? 'true' : undefined}
           aria-label={strings.playlist.playSongNamed(song.title)}
+          data-row-main
           disabled={song.unavailable}
           onClick={() => onPlay(song.entryId)}
         >
@@ -94,12 +116,14 @@ function PlaylistRowBase({ song, onPlay, onRemove, onMove, canMove }: PlaylistRo
           </span>
           <span className={`${styles.duration} tabular`}>{formatTime(song.durationMs)}</span>
         </button>
+        <FavoriteButton entry={song} reveal="hover" size={18} className={styles.favorite} />
         <span className={styles.seal}>
           {song.isCurrent ? <Hanko size={24} stampKey={song.entryId} /> : null}
         </span>
         <span className={styles.actions}>
           <IconButton
             label={strings.playlist.removeSongNamed(song.title)}
+            className={styles.remove}
             icon={<Trash2 size={18} strokeWidth={1.5} />}
             onClick={() => onRemove(song.entryId)}
           />
@@ -111,9 +135,14 @@ function PlaylistRowBase({ song, onPlay, onRemove, onMove, canMove }: PlaylistRo
               />
             </MenuTrigger>
             <MenuContent align="end">
-              <MenuItem disabled={!canMove} onSelect={() => onMove(song.entryId)}>
-                {strings.playlist.moveTo}
-              </MenuItem>
+              <RowMenuItems
+                entryId={song.entryId}
+                trackId={song.trackId}
+                canMoveUp={!song.isHead}
+                canMoveDown={!song.isTail}
+                onMove={onMove}
+                onRemove={onRemove}
+              />
             </MenuContent>
           </Menu>
           <button

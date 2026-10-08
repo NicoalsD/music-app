@@ -1,0 +1,7 @@
+/* Above the flat print, below the panels; never takes input. */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}

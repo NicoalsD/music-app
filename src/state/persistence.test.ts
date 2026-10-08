@@ -68,6 +68,16 @@ describe('isPersistedState', () => {
       withPlaylist({ entries: [{ ...entry, track: { ...track, ...patch } }] });
 
     expect(isPersistedState(withPlaylist({ name: '  ' }))).toBe(false);
+    expect(isPersistedState(withPlaylist({ kind: 'smart' }))).toBe(false);
+    expect(
+      isPersistedState({
+        ...base,
+        playlists: [
+          { ...first, kind: 'favorites' },
+          { ...first, id: 'other', kind: 'favorites' },
+        ],
+      }),
+    ).toBe(false);
     expect(isPersistedState(withPlaylist({ entries: 'x' }))).toBe(false);
     expect(isPersistedState(withPlaylist({ currentEntryId: 4 }))).toBe(false);
     expect(isPersistedState(withPlaylist({ entries: [{ ...entry, unavailable: 'no' }] }))).toBe(
@@ -112,6 +122,32 @@ describe('restoreState', () => {
     expect(restoredFirst?.current?.entryId).toBe(entryId);
     expect(restored.unavailable.has('l')).toBe(true);
     expect(restored.unavailable.has('s')).toBe(false);
+  });
+});
+
+describe('favorites persistence', () => {
+  it('keeps the favorites playlist, its kind and its place through a reload', () => {
+    const library = sampleLibrary();
+    library.like({ ...makeTrack('f'), source: 'spotify', uri: 'spotify:track:f' }, 'Favoritos');
+    const state = parsePersistedState(JSON.stringify(serializeState(library, DEFAULT_PREFERENCES)));
+    expect(state?.playlists[0]?.kind).toBe('favorites');
+    expect(state?.playlists[1]?.kind).toBe('regular');
+    const restored = restoreState(state, deps).library;
+    expect(restored.favorites?.name).toBe('Favoritos');
+    expect(restored.all()[0]).toBe(restored.favorites);
+    expect(restored.isFavorite('f')).toBe(true);
+  });
+
+  it('reads data saved before favorites existed (no kind) as regular playlists', () => {
+    const saved = JSON.parse(
+      JSON.stringify(serializeState(sampleLibrary(), DEFAULT_PREFERENCES)),
+    ) as { playlists: Record<string, unknown>[] };
+    for (const playlist of saved.playlists) delete playlist['kind'];
+    const state = parsePersistedState(JSON.stringify(saved));
+    expect(state).not.toBeNull();
+    const restored = restoreState(state, deps).library;
+    expect(restored.favorites).toBeNull();
+    expect(restored.all().map((p) => p.kind)).toEqual(['regular', 'regular']);
   });
 });
 

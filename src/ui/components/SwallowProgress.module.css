@@ -1,7 +1,8 @@
 .root {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  /* Wider than half the swallow, so it never covers the times at either end. */
+  gap: var(--space-4);
   width: 100%;
 }
 
@@ -27,42 +28,65 @@
   opacity: 0.5;
 }
 
-/* The wire: a thin ink line. */
+/* The wire: a soft band that thickens under the pointer. */
 .track {
   position: relative;
   flex: 1;
-  height: 2px;
-  background: var(--ink-faint);
-  border-radius: 1px;
+  height: 4px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--ink) 18%, transparent);
+  border-radius: 2px;
+  transition: height var(--duration-fast) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .slider:hover .track {
+    height: 6px;
+  }
 }
 
 .range {
   position: absolute;
   height: 100%;
   background: var(--ai);
-  border-radius: 1px;
 }
 
-/* The swallow perched on the wire is the thumb. */
+/* The thumb is a 1px anchor on the value (Radix offsets it by only half a pixel at the ends);
+   the swallow mark is drawn centred on it. */
 .thumb {
+  position: relative;
+  display: block;
+  width: 1px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  outline: none;
+}
+
+.mark {
+  position: absolute;
+  top: 50%;
+  left: 0;
   display: grid;
   place-items: center;
   width: 32px;
   height: 32px;
-  padding: 0;
-  border: 0;
   border-radius: var(--radius-md);
-  background: transparent;
-  cursor: grab;
+  transform: translate(-50%, -50%);
   transition: transform var(--duration-press) var(--ease-out);
 }
 
 .thumb:active {
   cursor: grabbing;
-  transform: translateY(-1px);
 }
 
-.thumb:focus-visible {
+.thumb:active .mark {
+  transform: translate(-50%, calc(-50% - 1px));
+}
+
+.thumb:focus-visible .mark {
   outline: var(--focus-ring);
   outline-offset: 1px;
 }

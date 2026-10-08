@@ -1,25 +1,36 @@
+/* A shoji strip docked in the shell grid (never fixed): now playing | transport + progress | tools. */
 .bar {
-  position: fixed;
-  right: var(--space-3);
-  bottom: var(--space-3);
-  left: var(--space-3);
-  z-index: var(--z-player);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 1fr);
+  grid-template-areas:
+    'now center side'
+    'notice notice notice';
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-5);
+  gap: 0 var(--space-4);
+  min-width: 0;
+  padding: var(--space-1) var(--space-4);
 }
 
 .now {
   display: flex;
+  grid-area: now;
   align-items: center;
   gap: var(--space-3);
   min-width: 0;
 }
 
-.art {
+.cover {
+  display: block;
   flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  transition: transform var(--duration-press) var(--ease-out);
+}
+
+.cover:active {
+  transform: scale(0.97);
 }
 
 .info {
@@ -27,10 +38,14 @@
   min-width: 0;
 }
 
+.favorite {
+  margin-inline-start: calc(var(--space-1) * -1);
+}
+
 .title {
   overflow: hidden;
   font-family: var(--font-display);
-  font-size: var(--text-lg);
+  font-size: var(--text-md);
   font-weight: var(--weight-display-heavy);
   line-height: var(--leading-display);
   text-overflow: ellipsis;
@@ -47,95 +62,101 @@
 
 .link {
   justify-self: start;
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   font-weight: var(--weight-medium);
 }
 
 .center {
   display: grid;
-  gap: var(--space-1);
+  grid-area: center;
   min-width: 0;
 }
 
 .controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 
-.play {
-  width: 52px;
-  height: 52px;
-}
-
-.spinner {
-  color: var(--on-ai);
-}
-
-.repeat {
-  position: relative;
-  display: inline-flex;
-}
-
-.badge {
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
-  display: grid;
-  place-items: center;
-  min-width: 14px;
-  height: 14px;
-  border-radius: 7px;
-  background: var(--ai);
-  color: var(--on-ai);
-  font-size: 10px;
-  font-weight: var(--weight-bold);
-  line-height: 1;
-  pointer-events: none;
-}
-
+/* The slider's 44px hit area overlaps its own padding so the strip stays slim. */
 .progress {
   min-width: 0;
+  margin-block: calc(-1 * var(--space-1)) -12px;
 }
 
 .hints {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-4);
   min-width: 0;
-  color: var(--ink-soft);
-  font-size: var(--text-xs);
-}
-
-.hints:empty {
-  display: none;
 }
 
 .hint {
+  white-space: nowrap;
+}
+
+/* One clamped line: a long message is cut with an ellipsis instead of growing the strip. */
+.noticeSlot {
+  grid-area: notice;
+  min-width: 0;
+  max-height: 36px;
+  overflow: hidden;
+}
+
+.noticeSlot:has(> :empty) {
+  display: none;
+}
+
+.noticeSlot > div {
+  flex-wrap: nowrap;
+  min-width: 0;
+  padding-top: var(--space-1);
+}
+
+.noticeSlot > div > span {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.volume {
+.noticeSlot > div > button {
+  flex: none;
+}
+
+.side {
+  display: flex;
+  grid-area: side;
+  align-items: center;
   justify-self: end;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+@media (max-width: 1279px) {
+  .bar {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  }
 }
 
 @media (max-width: 1023px) {
-  .hints {
+  .bar {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    grid-template-areas:
+      'now center'
+      'notice notice';
+  }
+
+  .side {
     display: none;
   }
 }
 
+/* Mini player: cover, title and transport on one row, the progress wire under it. */
 @media (max-width: 767px) {
   .bar {
-    right: var(--space-2);
-    bottom: var(--space-2);
-    left: var(--space-2);
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-1) var(--space-3);
-    padding: var(--space-2) var(--space-3);
+    grid-template-areas:
+      'now center'
+      'progress progress'
+      'notice notice';
+    gap: 0 var(--space-3);
+    padding: var(--space-1) var(--space-3);
   }
 
   .center {
@@ -143,31 +164,15 @@
   }
 
   .controls {
-    grid-column: 2;
-    grid-row: 1;
+    grid-area: center;
   }
 
-  .progress {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-
-  .noticeSlot {
-    grid-column: 1 / -1;
-  }
-
-  .optional,
-  .volume,
-  .hints {
+  .optional {
     display: none;
   }
 
-  .play {
-    width: 44px;
-    height: 44px;
-  }
-
-  .title {
-    font-size: var(--text-md);
+  .progress {
+    grid-area: progress;
+    margin-block: -6px -12px;
   }
 }

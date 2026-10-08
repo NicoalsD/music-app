@@ -74,7 +74,7 @@ export function SwallowProgress({
           if (next !== undefined) onSeekCommit(next);
         }}
       >
-        <Slider.Track className={styles.track}>
+        <Slider.Track className={styles.track} data-testid="progress-track">
           <Slider.Range className={styles.range} />
         </Slider.Track>
         <Slider.Thumb
@@ -82,7 +82,12 @@ export function SwallowProgress({
           aria-label={strings.player.progress}
           aria-valuetext={strings.player.timeOf(formatTime(shown), formatTime(durationMs))}
         >
-          <Swallow width={26} />
+          {/* Radix pulls a wide thumb inward by half its width at 0 and at the end, leaving a gap
+              on the wire. The thumb itself is 1px wide, so the swallow drawn around it is centred
+              exactly on the value. */}
+          <span className={styles.mark}>
+            <Swallow width={26} />
+          </span>
         </Slider.Thumb>
       </Slider.Root>
       <span className={cx(styles.time, 'tabular')} aria-hidden="true">

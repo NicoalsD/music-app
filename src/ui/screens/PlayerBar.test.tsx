@@ -8,11 +8,15 @@ import { PlayerBar } from './PlayerBar';
 import { renderWithStore } from './test-utils/render';
 
 function setup(...tracks: ReturnType<typeof makeTrack>[]) {
-  const view = renderWithStore(<PlayerBar />);
+  const onOpenNowPlaying = vi.fn();
+  const onToggleLyrics = vi.fn();
+  const view = renderWithStore(
+    <PlayerBar onOpenNowPlaying={onOpenNowPlaying} onToggleLyrics={onToggleLyrics} lyricsOpen />,
+  );
   act(() => {
     for (const t of tracks) view.h.store.addLast(t);
   });
-  return { ...view, user: userEvent.setup() };
+  return { ...view, onOpenNowPlaying, onToggleLyrics, user: userEvent.setup() };
 }
 
 describe('PlayerBar', () => {
@@ -22,6 +26,45 @@ describe('PlayerBar', () => {
     expect(screen.getByRole('button', { name: strings.player.play })).toBeDisabled();
     expect(screen.getByRole('button', { name: strings.player.next })).toBeDisabled();
     expect(screen.getByRole('button', { name: strings.player.previous })).toBeDisabled();
+  });
+
+  it('opens now playing from the cover and the expand button', async () => {
+    const { onOpenNowPlaying, user } = setup(makeTrack('a'));
+    await user.click(screen.getByRole('button', { name: strings.nowPlaying.open }));
+    await user.click(screen.getByRole('button', { name: strings.nowPlaying.title }));
+    expect(onOpenNowPlaying).toHaveBeenCalledTimes(2);
+  });
+
+  it('toggles the lyrics and reflects their state', async () => {
+    const { onToggleLyrics, user } = setup(makeTrack('a'));
+    const toggle = screen.getByRole('button', { name: strings.lyrics.title });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await user.click(toggle);
+    expect(onToggleLyrics).toHaveBeenCalledTimes(1);
+  });
+
+  it('only renders the queue toggle when the shell can show it', async () => {
+    setup(makeTrack('a'));
+    expect(screen.queryByRole('button', { name: strings.sidePanel.queue })).not.toBeInTheDocument();
+    const onToggleQueue = vi.fn();
+    renderWithStore(
+      <PlayerBar
+        onOpenNowPlaying={vi.fn()}
+        onToggleLyrics={vi.fn()}
+        onToggleQueue={onToggleQueue}
+        queueOpen
+      />,
+    );
+    const toggle = screen.getByRole('button', { name: strings.sidePanel.queue });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.setup().click(toggle);
+    expect(onToggleQueue).toHaveBeenCalledTimes(1);
+  });
+
+  it('clamps notices to one line inside the strip', () => {
+    const { h } = setup(makeTrack('a'));
+    act(() => h.spotify.setStatus('error'));
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
   it('shows title, artists and album of the current song', () => {

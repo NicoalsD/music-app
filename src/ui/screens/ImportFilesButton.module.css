@@ -4,6 +4,7 @@
 }
 
 .main {
+  flex: 1 1 auto;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
@@ -29,9 +30,5 @@
 @media (max-width: 767px) {
   .group {
     display: flex;
-  }
-
-  .main {
-    flex: 1 1 auto;
   }
 }

@@ -114,3 +114,6 @@ Las versiones de las actions se confirman al crear los workflows, contra el Mark
 | El profesor no está en la allowlist | Agregarlo antes de la entrega; los archivos locales funcionan igual |
 | Su navegador no tiene Widevine | Mensaje claro en la UI y archivos locales como alternativa |
 | Repositorio privado | Pages gratis requiere un repositorio público (o GitHub Pro/Education: el GitHub Student Pack lo incluye) |
+| Pages no está habilitado (pasó en el primer despliegue: `configure-pages` falló con "Get Pages site failed... Not Found") | Habilitarlo una vez con Source: GitHub Actions (o `gh api -X POST repos/NicoalsD/music-app/pages -f build_type=workflow`) |
+| La variable `VITE_SPOTIFY_CLIENT_ID` no existe en el repositorio | El build sale sin Client ID y el login muestra "No se pudo iniciar sesión con Spotify". Crearla con `gh variable set VITE_SPOTIFY_CLIENT_ID` |
+| Inicio usa scopes nuevos (`user-top-read`, `user-read-recently-played`, `user-library-read`) | Las sesiones anteriores ven el aviso "Vuelve a conectar Spotify"; no hace falta tocar el Dashboard |

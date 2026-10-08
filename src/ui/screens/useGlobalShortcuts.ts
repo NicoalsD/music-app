@@ -10,7 +10,9 @@ export interface ShortcutActions {
 
 const INTERACTIVE =
   'button, a[href], summary, select, [role="button"], [role="slider"], [role="tab"], [role="menuitem"]';
-const OVERLAYS = '[role="dialog"], [role="alertdialog"], [role="menu"]';
+// The Now Playing view is a dialog too, but it is the player itself, so shortcuts stay active in it.
+const OVERLAYS =
+  '[role="dialog"]:not([data-now-playing-view]), [role="alertdialog"], [role="menu"]';
 
 function isEditable(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -67,6 +69,12 @@ export function useGlobalShortcuts({ onFocusSearch, onShowHelp }: ShortcutAction
         case 'R':
           store.cycleRepeat();
           return;
+        case 'l':
+        case 'L': {
+          const current = store.getSnapshot().currentEntryId;
+          if (current !== null) store.toggleFavoriteEntry(current);
+          return;
+        }
         case '/':
           event.preventDefault();
           onFocusSearch();

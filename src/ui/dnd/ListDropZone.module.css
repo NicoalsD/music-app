@@ -1,0 +1,11 @@
+.zone {
+  position: relative;
+  min-height: 100%;
+  border: var(--outline-width) dashed transparent;
+  border-radius: var(--radius-md);
+}
+
+.zone[data-track-over='true'],
+.zone[data-file-over='true'] {
+  border-color: var(--ai);
+}

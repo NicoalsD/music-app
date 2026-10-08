@@ -1,0 +1,18 @@
+.subTrigger {
+  justify-content: space-between;
+}
+
+.subTrigger[data-state='open'] {
+  background: var(--ai-wash);
+}
+
+.subLabel {
+  flex: 1;
+}
+
+/* Long playlists scroll inside the submenu instead of running off the screen. */
+.subContent {
+  max-height: min(60vh, var(--radix-dropdown-menu-content-available-height, 60vh));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}

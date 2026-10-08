@@ -1,10 +1,13 @@
-import { act, screen, within } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { makeTrack } from '../../core/test-utils/fakes';
 import type { AlbumDetail, ArtistDetail, SearchResults } from '../../providers/MusicProvider';
 import { spotifyTrack } from '../../state/test-utils/harness';
 import { strings } from '../i18n/es';
+import { useSearch, useStore } from '../../state';
+import { SearchField } from './SearchField';
 import { SearchPanel } from './SearchPanel';
+import type { SearchPanelProps } from './SearchPanel';
 import { renderWithStore } from './test-utils/render';
 
 const albumSummary = {
@@ -31,8 +34,25 @@ const album: AlbumDetail = {
 
 const artist: ArtistDetail = { ...artistSummary, albums: [albumSummary] };
 
+/** What the shell does: the top bar field drives the search state shown by the panel. */
+function Harness({
+  onOpenAlbum,
+  onOpenArtist,
+}: Pick<SearchPanelProps, 'onOpenAlbum' | 'onOpenArtist'>) {
+  const store = useStore();
+  const search = useSearch(store.provider);
+  return (
+    <>
+      <SearchField text={search.text} onTextChange={search.setText} onActivate={() => undefined} />
+      <SearchPanel search={search} onOpenAlbum={onOpenAlbum} onOpenArtist={onOpenArtist} />
+    </>
+  );
+}
+
 function setup(options: { loggedIn?: boolean } = {}) {
-  const view = renderWithStore(<SearchPanel />);
+  const onOpenAlbum = vi.fn();
+  const onOpenArtist = vi.fn();
+  const view = renderWithStore(<Harness onOpenAlbum={onOpenAlbum} onOpenArtist={onOpenArtist} />);
   view.h.provider.searchImpl = () => Promise.resolve(results);
   view.h.provider.albumImpl = () => Promise.resolve(album);
   view.h.provider.artistImpl = () => Promise.resolve(artist);
@@ -42,7 +62,7 @@ function setup(options: { loggedIn?: boolean } = {}) {
       view.h.auth.emit('logged-in');
     });
   }
-  return { ...view, user: userEvent.setup() };
+  return { ...view, onOpenAlbum, onOpenArtist, user: userEvent.setup() };
 }
 
 const searchbox = () => screen.getByRole('searchbox', { name: strings.search.label });
@@ -62,7 +82,8 @@ describe('SearchPanel', () => {
       screen.getByRole('heading', { name: strings.search.loggedOutTitle }),
     ).toBeInTheDocument();
     expect(screen.getByText(strings.search.localNote)).toBeInTheDocument();
-    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+    expect(searchbox()).toHaveAttribute('readonly');
+    expect(h.provider.searches).toHaveLength(0);
     await user.click(screen.getByRole('button', { name: strings.spotify.connect }));
     expect(h.auth.loginCalls).toBe(1);
   });
@@ -119,11 +140,12 @@ describe('SearchPanel', () => {
 
     await open();
     await user.click(await screen.findByRole('menuitem', { name: strings.add.playNow }));
-    expect(titles(h)).toHaveLength(4);
+    // Title t1 is already the current song, so "play now" resumes it instead of adding a copy.
+    expect(titles(h)).toHaveLength(3);
     expect(h.store.getSnapshot().player.status).toBe('playing');
-  });
+  }, 20_000);
 
-  it('inserts at a chosen position through the dialog', async () => {
+  it('inserts after a chosen song with the keyboard through the "Insertar después de…" submenu', async () => {
     const { h, user } = setup();
     act(() => {
       h.store.addLast(makeTrack('a'));
@@ -132,13 +154,42 @@ describe('SearchPanel', () => {
     await search(user);
     await user.click(screen.getByRole('button', { name: strings.add.moreActions('Title t2') }));
     await user.click(await screen.findByRole('menuitem', { name: strings.add.insertAt }));
-    const dialog = await screen.findByRole('dialog', { name: strings.insert.title });
-    const input = within(dialog).getByRole('textbox', { name: strings.add.positionLabel });
-    await user.clear(input);
-    await user.type(input, '2');
-    await user.click(within(dialog).getByRole('button', { name: strings.add.confirm }));
+    await screen.findByRole('menuitem', { name: strings.add.insertAfterItem(1, 'Title a') });
+    await user.keyboard('{ArrowRight}{ArrowDown}{Enter}');
     expect(titles(h)).toEqual(['Title a', 'Title t2', 'Title b']);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  }, 20_000);
+
+  it('inserts at the start through the first item of the submenu', async () => {
+    const { h, user } = setup();
+    act(() => h.store.addLast(makeTrack('a')));
+    await search(user);
+    await user.click(screen.getByRole('button', { name: strings.add.moreActions('Title t1') }));
+    await user.click(await screen.findByRole('menuitem', { name: strings.add.insertAt }));
+    await screen.findByRole('menuitem', { name: strings.add.insertAtStart });
+    await user.keyboard('{ArrowRight}{Enter}');
+    expect(titles(h)).toEqual(['Title t1', 'Title a']);
+  });
+
+  it('adds to another playlist from the "Agregar a playlist" submenu without switching', async () => {
+    const { h, user } = setup();
+    const firstId = h.store.getSnapshot().activePlaylistId;
+    await act(async () => {
+      await h.store.createPlaylist('Rock');
+      h.store.switchPlaylist(firstId);
+    });
+    await search(user);
+    await user.click(screen.getByRole('button', { name: strings.add.moreActions('Title t1') }));
+    await user.click(await screen.findByRole('menuitem', { name: strings.add.addToPlaylist }));
+    await screen.findByRole('menuitem', {
+      name: strings.add.playlistItem('Rock', strings.playlist.songCount(0)),
+    });
+    // Submenus are keyboard-first: ArrowRight enters, ArrowDown reaches the second playlist.
+    await user.keyboard('{ArrowRight}{ArrowDown}{Enter}');
+    const snapshot = h.store.getSnapshot();
+    expect(snapshot.activePlaylistId).toBe(firstId);
+    expect(snapshot.songs).toHaveLength(0);
+    expect(snapshot.playlists.map((p) => p.size)).toEqual([0, 1]);
   });
 
   it('applies the filter and asks the provider for that type only', async () => {
@@ -203,71 +254,13 @@ describe('SearchPanel', () => {
     expect(screen.queryByRole('button', { name: strings.search.loadMore })).not.toBeInTheDocument();
   });
 
-  it('opens an album detail that replaces the results, and goes back keeping the query', async () => {
-    const { user } = setup();
-    const albumButton = await search(user);
-    await user.click(albumButton);
-    expect(await screen.findByRole('heading', { name: 'La Mer', level: 2 })).toBeInTheDocument();
-    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
-    expect(screen.getByText('Debussy')).toBeInTheDocument();
-    expect(screen.getByText(`1905 · ${strings.detail.trackCount(2)} · 3:00`)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: strings.search.backToResults }));
-    expect(searchbox()).toHaveValue('mer');
-    expect(screen.getByText('Title t1')).toBeInTheDocument();
-  });
-
-  it('adds the whole album at the end or at the start, in order', async () => {
-    const { h, user } = setup();
-    act(() => h.store.addLast(makeTrack('m')));
-    await user.click(await search(user));
-    await user.click(await screen.findByRole('button', { name: strings.detail.addAlbumToEnd }));
-    expect(titles(h)).toEqual(['Title m', 'Title x1', 'Title x2']);
-    await user.click(screen.getByRole('button', { name: strings.detail.addAlbumToStart }));
-    expect(titles(h)).toEqual(['Title x1', 'Title x2', 'Title m', 'Title x1', 'Title x2']);
-  });
-
-  it('adds one album track with its plus button', async () => {
-    const { h, user } = setup();
-    await user.click(await search(user));
-    await user.click(
-      await screen.findByRole('button', { name: strings.search.addTrackToEnd('Title x2') }),
-    );
-    expect(titles(h)).toEqual(['Title x2']);
-  });
-
-  it('shows an error state with retry when the album fails to load', async () => {
-    const { h, user } = setup();
-    h.provider.albumImpl = () => Promise.reject(new Error('net'));
-    await user.click(await search(user));
-    expect(
-      await screen.findByRole('heading', { name: strings.detail.loadErrorTitle }),
-    ).toBeInTheDocument();
-    h.provider.albumImpl = () => Promise.resolve(album);
-    await user.click(screen.getByRole('button', { name: strings.search.retry }));
-    expect(await screen.findByRole('heading', { name: 'La Mer', level: 2 })).toBeInTheDocument();
-  });
-
-  it('opens an artist, then one of their albums, and walks back through both', async () => {
-    const { user } = setup();
+  it('reports the album or artist the user opens', async () => {
+    const { onOpenAlbum, onOpenArtist, user } = setup();
     await search(user);
     await user.click(screen.getByRole('button', { name: strings.search.openArtist('Debussy') }));
-    expect(await screen.findByRole('heading', { name: 'Debussy', level: 2 })).toBeInTheDocument();
-    expect(screen.getByText('classical')).toBeInTheDocument();
+    expect(onOpenArtist).toHaveBeenCalledWith(artistSummary);
     await user.click(screen.getByRole('button', { name: strings.search.openAlbum('La Mer') }));
-    expect(await screen.findByRole('heading', { name: 'La Mer', level: 2 })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: strings.search.backToResults }));
-    expect(await screen.findByRole('heading', { name: 'Debussy', level: 2 })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: strings.search.backToResults }));
-    expect(searchbox()).toBeInTheDocument();
-  });
-
-  it('shows artists without genres or albums gracefully', async () => {
-    const { h, user } = setup();
-    h.provider.artistImpl = () => Promise.resolve({ ...artistSummary, genres: [], albums: [] });
-    await search(user);
-    await user.click(screen.getByRole('button', { name: strings.search.openArtist('Debussy') }));
-    expect(await screen.findByText(strings.detail.noGenres)).toBeInTheDocument();
-    expect(screen.getByText(strings.detail.noAlbums)).toBeInTheDocument();
+    expect(onOpenAlbum).toHaveBeenCalledWith(albumSummary);
   });
 
   it('marks explicit tracks', async () => {

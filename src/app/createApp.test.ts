@@ -29,6 +29,7 @@ describe('createApp', () => {
     const snapshot = app.store.getSnapshot();
     expect(snapshot.playlists.map((p) => p.name)).toEqual(['Mi lista']);
     expect(snapshot.spotify.auth).toBe('logged-out');
+    expect(typeof app.lyricsProvider.find).toBe('function');
     app.dispose();
   });
 

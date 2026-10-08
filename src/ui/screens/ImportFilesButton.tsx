@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { ChevronDown, FileUp } from 'lucide-react';
-import { useStore, usePlayerSnapshot } from '../../state';
+import { useStore } from '../../state';
 import type { ImportPlacement } from '../../state';
 import { Button } from '../components/Button';
 import type { ButtonVariant } from '../components/Button';
@@ -8,8 +8,6 @@ import { IconButton } from '../components/IconButton';
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '../components/Menu';
 import { cx } from '../cx';
 import { strings } from '../i18n/es';
-import { PositionDialog } from './PositionDialog';
-import { sameTitles, selectTitles } from './selectTitles';
 import styles from './ImportFilesButton.module.css';
 
 export interface ImportFilesButtonProps {
@@ -19,14 +17,12 @@ export interface ImportFilesButtonProps {
 
 /**
  * Split action. The main button imports at the end; the menu imports at the start, after the
- * current song, or at a position chosen in a dialog before the file picker opens.
+ * current song, or at the end. Dropping files on the list picks any other position.
  */
 export function ImportFilesButton({ variant = 'secondary', className }: ImportFilesButtonProps) {
   const store = useStore();
-  const titles = usePlayerSnapshot(selectTitles, sameTitles);
   const inputRef = useRef<HTMLInputElement>(null);
   const placementRef = useRef<ImportPlacement>({ kind: 'last' });
-  const [positionOpen, setPositionOpen] = useState(false);
 
   function pick(placement: ImportPlacement) {
     placementRef.current = placement;
@@ -70,24 +66,12 @@ export function ImportFilesButton({ variant = 'secondary', className }: ImportFi
             <MenuItem onSelect={() => pick({ kind: 'next' })}>
               {strings.library.importNext}
             </MenuItem>
-            <MenuItem onSelect={() => setPositionOpen(true)}>
-              {strings.library.importAtPosition}
+            <MenuItem onSelect={() => pick({ kind: 'last' })}>
+              {strings.library.importAtEnd}
             </MenuItem>
           </MenuContent>
         </Menu>
       </div>
-      {positionOpen ? (
-        <PositionDialog
-          open
-          onOpenChange={setPositionOpen}
-          titles={titles}
-          newLabel={strings.library.importPlaceholder}
-          title={strings.library.importAtTitle}
-          description={strings.library.importAtDescription}
-          confirmLabel={strings.library.importConfirm}
-          onConfirm={(index) => pick({ kind: 'at', index })}
-        />
-      ) : null}
     </>
   );
 }

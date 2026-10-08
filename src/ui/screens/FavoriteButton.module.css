@@ -1,0 +1,41 @@
+.heart[data-liked='true'] {
+  color: var(--shu);
+}
+
+/* A liked heart lands with a short stamp, like the hanko seal. */
+.heart[data-liked='true'] .icon {
+  animation: heart-stamp var(--duration-base) var(--ease-out);
+}
+
+@keyframes heart-stamp {
+  from {
+    transform: scale(1.2);
+  }
+}
+
+/*
+ * In rows the empty heart only appears on hover or keyboard focus within the row, like Spotify;
+ * the parent row sets data-row-hover-scope. A liked heart always stays visible.
+ */
+.heart[data-reveal='hover'][data-liked='false'] {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+:global([data-row-hover-scope]):hover .heart[data-reveal='hover'],
+:global([data-row-hover-scope]):focus-within .heart[data-reveal='hover'],
+.heart[data-reveal='hover']:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .heart[data-reveal='hover'][data-liked='false'] {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heart[data-liked='true'] .icon {
+    animation: none;
+  }
+}

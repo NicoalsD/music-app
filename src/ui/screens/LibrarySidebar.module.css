@@ -1,0 +1,196 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  padding: var(--space-4) var(--space-3);
+}
+
+.nav {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--target-min);
+  padding: 0 var(--space-3);
+  border: var(--outline-width) solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-display);
+  text-align: left;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.navItem[aria-current='page'] {
+  border-color: var(--ink);
+  background: var(--paper-raised);
+  color: var(--ink);
+  box-shadow: 0 2px 0 var(--stack-shadow);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-1) 0 var(--space-3);
+  border-top: var(--outline-width) solid var(--line);
+}
+
+.title {
+  font-size: var(--text-lg);
+}
+
+.create {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.item {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: 52px;
+  padding: 0 var(--space-2);
+  border: var(--outline-width) solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.item[data-active='true'] {
+  border-color: var(--ink);
+  background: var(--paper-raised);
+}
+
+.seal {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+}
+
+.text {
+  display: grid;
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  font-weight: var(--weight-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.more {
+  flex: none;
+}
+
+/* Keeps Favoritos aligned with the playlists that do have an options button. */
+.moreSpacer {
+  flex: none;
+  width: var(--target-min);
+}
+
+.heart {
+  color: var(--shu);
+}
+
+.footer {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: var(--outline-width) solid var(--line);
+}
+
+.import {
+  display: flex;
+  width: 100%;
+}
+
+.attribution {
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+/* While a song from the search is dragged, every playlist shows it can take it. */
+.item[data-drop='ready'] {
+  border-style: dashed;
+  border-color: var(--ai);
+}
+
+.item[data-drop='over'] {
+  border-style: solid;
+  border-width: 3px;
+  border-color: var(--ink);
+  background: var(--ai-wash);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .navItem:hover:not([aria-current='page']),
+  .item:hover:not([data-active='true']) {
+    background: var(--ai-wash);
+    color: var(--ink);
+  }
+}
+
+@media (max-width: 1023px) {
+  .navItem {
+    font-size: var(--text-md);
+  }
+}
+
+@media (max-width: 767px) {
+  /* The bottom nav replaces these two items. */
+  .nav {
+    display: none;
+  }
+}
+
+/* The split import button must fit the narrow sidebar. */
+.import > button:first-of-type {
+  min-width: 0;
+  padding: 0 var(--space-2);
+}

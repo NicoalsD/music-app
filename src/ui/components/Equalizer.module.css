@@ -1,0 +1,54 @@
+.equalizer {
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  width: 16px;
+  height: 16px;
+}
+
+.bar {
+  width: 3px;
+  height: 100%;
+  background: currentcolor;
+  transform: scaleY(0.5);
+  transform-origin: bottom;
+}
+
+.bar:nth-child(2) {
+  transform: scaleY(0.85);
+}
+
+.bar:nth-child(3) {
+  transform: scaleY(0.35);
+}
+
+.equalizer[data-animated='true'] .bar {
+  animation: equalize 900ms ease-in-out infinite alternate;
+}
+
+.equalizer[data-animated='true'] .bar:nth-child(2) {
+  animation-delay: -300ms;
+  animation-duration: 700ms;
+}
+
+.equalizer[data-animated='true'] .bar:nth-child(3) {
+  animation-delay: -600ms;
+  animation-duration: 1100ms;
+}
+
+@keyframes equalize {
+  from {
+    transform: scaleY(0.25);
+  }
+
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .equalizer[data-animated='true'] .bar {
+    animation: none;
+  }
+}

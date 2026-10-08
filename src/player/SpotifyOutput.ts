@@ -99,6 +99,15 @@ interface TrackedState {
 const PLAY_URL = 'https://api.spotify.com/v1/me/player/play';
 const NEAR_END_MS = 1500;
 const POLL_END_MARGIN_MS = 300;
+/** A seek this close to the end is treated as reaching the end (Spotify goes silent otherwise). */
+const SEEK_END_MARGIN_MS = 1500;
+/** After a seek, states this far from the expected position are stale and ignored... */
+const SEEK_STALE_TOLERANCE_MS = 2500;
+/** ...but only for this long, so a seek that Spotify ignored cannot freeze the progress. */
+const SEEK_GUARD_WINDOW_MS = 2500;
+/** Play requests closer than this to the previous one are coalesced (rapid "next"). */
+const RAPID_PLAY_WINDOW_MS = 700;
+const RAPID_PLAY_SETTLE_MS = 250;
 
 /**
  * AudioOutput over the Spotify Web Playback SDK. The SDK has no "ended"
@@ -132,6 +141,11 @@ export class SpotifyOutput implements AudioOutput {
   #lastState: TrackedState | null = null;
   #lastPaused: boolean | null = null;
   #pollHandle: number | null = null;
+  #durationMs = 0;
+  /** Bumped on every load so in-flight play requests for older songs can bail out. */
+  #generation = 0;
+  #lastPlayRequestAt = Number.NEGATIVE_INFINITY;
+  #seekGuard: { readonly targetMs: number; readonly at: number } | null = null;
 
   constructor(deps: SpotifyOutputDeps) {
     this.#deps = deps;
@@ -173,18 +187,26 @@ export class SpotifyOutput implements AudioOutput {
   }
 
   async load(song: Song, positionMs = 0): Promise<void> {
+    this.#generation++;
+    // Silence the previous song right away instead of waiting for the next PUT to land.
+    const interrupt = this.#sessionActive && !this.#sessionEnded && !this.#userPaused;
     this.#uri = song.uri;
+    this.#durationMs = song.durationMs;
+    this.#seekGuard = null;
     this.#startPositionMs = positionMs;
     this.#sessionActive = false;
     this.#sessionEnded = false;
     this.#lastState = null;
     this.#stopPolling();
+    if (interrupt && this.#player !== null) await this.#player.pause().catch(() => undefined);
   }
 
   async play(): Promise<void> {
     const uri = this.#uri;
     if (uri === null) throw new PlaybackError('No song loaded');
+    const generation = this.#generation;
     const { player, deviceId } = await this.#ensureDevice();
+    if (generation !== this.#generation) return;
     if (!this.#activated) {
       this.#activated = true;
       await player.activateElement();
@@ -193,9 +215,17 @@ export class SpotifyOutput implements AudioOutput {
     if (this.#sessionActive && this.#sessionUri === uri && !this.#sessionEnded) {
       await player.resume();
     } else {
+      const now = this.#deps.clock.now();
+      const rapid = now - this.#lastPlayRequestAt < RAPID_PLAY_WINDOW_MS;
+      this.#lastPlayRequestAt = now;
+      if (rapid) {
+        // Let a burst of "next" clicks settle so Spotify only receives the last song.
+        await this.#deps.sleep(RAPID_PLAY_SETTLE_MS);
+        if (generation !== this.#generation) return;
+      }
       this.#beginSession(uri);
       try {
-        await this.#requestPlay(deviceId, uri, this.#startPositionMs);
+        await this.#requestPlay(deviceId, uri, this.#startPositionMs, generation);
       } catch (error) {
         this.#sessionActive = false;
         throw error;
@@ -213,6 +243,21 @@ export class SpotifyOutput implements AudioOutput {
 
   async seek(positionMs: number): Promise<void> {
     if (this.#sessionActive && !this.#sessionEnded && this.#player !== null) {
+      const duration = this.#lastState?.duration ?? this.#durationMs;
+      if (duration > 0 && positionMs >= duration - SEEK_END_MARGIN_MS) {
+        // Seeking into the tail leaves the SDK silent with a stale position: end the song instead.
+        this.#finish();
+        return;
+      }
+      const now = this.#deps.clock.now();
+      this.#seekGuard = { targetMs: positionMs, at: now };
+      // Track the target so end detection extrapolates from where we jumped to.
+      this.#lastState = {
+        paused: this.#lastState?.paused ?? false,
+        position: positionMs,
+        duration,
+        receivedAt: now,
+      };
       await this.#player.seek(positionMs);
     } else {
       this.#startPositionMs = positionMs;
@@ -362,11 +407,17 @@ export class SpotifyOutput implements AudioOutput {
     this.#lastPaused = null;
   }
 
-  async #requestPlay(deviceId: string, uri: string, positionMs: number): Promise<void> {
+  async #requestPlay(
+    deviceId: string,
+    uri: string,
+    positionMs: number,
+    generation: number,
+  ): Promise<void> {
     const backoff = this.#deps.retryBackoffMs ?? [300, 600, 1200];
     for (let attempt = 0; ; attempt++) {
       const token = await this.#deps.tokens.getAccessToken();
       if (token === null) throw new PlaybackError('spotify-not-ready');
+      if (generation !== this.#generation) return;
       const response = await this.#deps.fetch(
         `${PLAY_URL}?device_id=${encodeURIComponent(deviceId)}`,
         {
@@ -379,6 +430,7 @@ export class SpotifyOutput implements AudioOutput {
       const delay = backoff[attempt];
       if (response.status === 404 && delay !== undefined) {
         await this.#deps.sleep(delay);
+        if (generation !== this.#generation) return;
         continue;
       }
       throw new PlaybackError('playback-failed');
@@ -398,26 +450,46 @@ export class SpotifyOutput implements AudioOutput {
     }
     if (!this.#sessionActive || this.#sessionEnded) return;
     const now = this.#deps.clock.now();
-    const previous = this.#lastState;
+    const ours = this.#isOurs(state.track_window.current_track);
+    // End detection runs first: the end state legitimately differs from any seek target.
+    if (state.paused && state.position === 0 && !this.#userPaused) {
+      const playedBefore = state.track_window.previous_tracks.some((track) => this.#isOurs(track));
+      if (playedBefore || this.#wasNearEnd(this.#lastState, now)) {
+        this.#finish();
+        return;
+      }
+    }
+    // States of another song (e.g. the previous one, still settling) or from before our
+    // latest seek would make the progress jump back, so they are dropped.
+    if (!ours || this.#isStaleAfterSeek(state, now)) return;
     this.#lastState = {
       paused: state.paused,
       position: state.position,
       duration: state.duration,
       receivedAt: now,
     };
-
-    if (state.paused && state.position === 0 && !this.#userPaused) {
-      const playedBefore = state.track_window.previous_tracks.some((track) => this.#isOurs(track));
-      if (playedBefore || this.#wasNearEnd(previous, now)) {
-        this.#finish();
-        return;
-      }
-    }
     this.#emit({ type: 'progress', positionMs: state.position, durationMs: state.duration });
     if (this.#lastPaused !== state.paused) {
       this.#lastPaused = state.paused;
       this.#emit({ type: state.paused ? 'paused' : 'playing' });
     }
+  }
+
+  /** True for a state that still shows the position from before our latest seek. */
+  #isStaleAfterSeek(state: SpotifyStateLike, now: number): boolean {
+    const guard = this.#seekGuard;
+    if (guard === null) return false;
+    const elapsed = now - guard.at;
+    if (elapsed > SEEK_GUARD_WINDOW_MS) {
+      this.#seekGuard = null;
+      return false;
+    }
+    const expected = guard.targetMs + (state.paused ? 0 : elapsed);
+    if (Math.abs(state.position - expected) <= SEEK_STALE_TOLERANCE_MS) {
+      this.#seekGuard = null;
+      return false;
+    }
+    return true;
   }
 
   #wasNearEnd(previous: TrackedState | null, now: number): boolean {
@@ -455,7 +527,9 @@ export class SpotifyOutput implements AudioOutput {
       !this.#sessionActive ||
       this.#sessionEnded ||
       this.#userPaused ||
-      state.paused
+      state.paused ||
+      !this.#isOurs(state.track_window.current_track) ||
+      this.#isStaleAfterSeek(state, this.#deps.clock.now())
     )
       return;
     if (state.duration > 0 && state.position >= state.duration - POLL_END_MARGIN_MS) {

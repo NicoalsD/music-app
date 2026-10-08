@@ -7,6 +7,9 @@ import type { Track } from './Song';
 
 export type RepeatMode = 'off' | 'all' | 'one';
 
+/** 'favorites' is the automatic playlist of liked songs; every other playlist is 'regular'. */
+export type PlaylistKind = 'regular' | 'favorites';
+
 export interface RemoveResult {
   readonly removed: Song;
   readonly index: number;
@@ -19,6 +22,8 @@ export interface PlaylistParams {
   readonly name: string;
   readonly createdAt: number;
   readonly ids: IdGenerator;
+  /** Defaults to 'regular'. */
+  readonly kind?: PlaylistKind;
 }
 
 function normalizeName(name: string): string {
@@ -31,6 +36,7 @@ function normalizeName(name: string): string {
 export class Playlist {
   readonly id: string;
   readonly createdAt: number;
+  readonly kind: PlaylistKind;
   #name: string;
   readonly #ids: IdGenerator;
   readonly #songs = new DoublyLinkedList<Song>();
@@ -41,6 +47,7 @@ export class Playlist {
   constructor(params: PlaylistParams) {
     this.id = params.id;
     this.createdAt = params.createdAt;
+    this.kind = params.kind ?? 'regular';
     this.#name = normalizeName(params.name);
     this.#ids = params.ids;
   }
@@ -74,6 +81,11 @@ export class Playlist {
 
   songs(): readonly Song[] {
     return this.#songs.toArray();
+  }
+
+  /** True when any entry of the playlist is the given track. */
+  hasTrack(trackId: string): boolean {
+    return this.#songs.find((song) => song.trackId === trackId) !== null;
   }
 
   rename(name: string): void {
