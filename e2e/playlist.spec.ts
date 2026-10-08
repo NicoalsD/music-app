@@ -8,7 +8,7 @@ import {
   tonePath,
 } from './fixtures';
 import type { ToneName } from './fixtures';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 const play = (page: Page) => page.getByRole('button', { name: 'Reproducir', exact: true });
 const pause = (page: Page) => page.getByRole('button', { name: 'Pausar', exact: true });
@@ -44,6 +44,12 @@ async function moveRow(page: Page, name: string, from: number, to: number, total
     }).toPass({ timeout: 10_000 });
   }
   await page.keyboard.press('Space');
+}
+
+async function boxOf(locator: Locator) {
+  const box = await locator.boundingBox();
+  if (box === null) throw new Error('element has no box');
+  return box;
 }
 
 /** Picks "item" from the import split-menu and answers the file chooser it opens. */
@@ -145,26 +151,46 @@ test.describe('playlist', () => {
     await expect(page.getByText('4 canciones').first()).toBeVisible();
   });
 
-  test('"Importar en posición…" lands the file at the chosen position', async ({ page }) => {
+  test('"Importar al final" from the menu appends the new file', async ({ page }) => {
     await setup(page);
-    await page.getByRole('button', { name: 'Más opciones de importación' }).click();
-    await page.getByRole('menuitem', { name: 'Importar en posición…' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Importar en posición' });
-    await dialog.getByRole('textbox', { name: 'Posición' }).fill('2');
-    await expect(dialog.getByText('Archivos nuevos')).toBeVisible();
-    const chooser = page.waitForEvent('filechooser');
-    await dialog.getByRole('button', { name: 'Elegir archivos' }).click();
-    await (await chooser).setFiles(tonePath('tone-c'));
-    await expect.poll(() => songOrder(page)).toEqual(['tone-a', 'tone-c', 'tone-b', 'tone-c']);
+    const { chooser, tone } = await importFromMenu(page, 'Importar al final', 'tone-c');
+    await (await chooser).setFiles(tonePath(tone));
+    await expect.poll(() => songOrder(page)).toEqual(['tone-a', 'tone-b', 'tone-c', 'tone-c']);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
   });
 
-  test('"Mover a posición…" moves the last song to position 1', async ({ page }) => {
+  test('the row menu moves a song to the start without any dialog', async ({ page }) => {
     await setup(page);
     await page.getByRole('button', { name: 'Opciones de tone-c' }).click();
-    await page.getByRole('menuitem', { name: 'Mover a posición…' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Mover a posición' });
-    await dialog.getByRole('textbox', { name: 'Posición' }).fill('1');
-    await dialog.getByRole('button', { name: 'Mover' }).click();
+    await page.getByRole('menuitem', { name: 'Mover al inicio' }).click();
+    await expect.poll(() => songOrder(page)).toEqual(['tone-c', 'tone-a', 'tone-b']);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+
+  test('Alt+ArrowUp moves the focused row up and keeps focus on it', async ({ page }) => {
+    await setup(page);
+    await songButton(page, 'tone-c').focus();
+    await page.keyboard.press('Alt+ArrowUp');
+    await expect.poll(() => songOrder(page)).toEqual(['tone-a', 'tone-c', 'tone-b']);
+    await expect(songButton(page, 'tone-c')).toBeFocused();
+    await expect(page.getByText('tone-c movida a la posición 2 de 3').first()).toBeAttached();
+    await page.keyboard.press('Alt+Home');
+    await expect.poll(() => songOrder(page)).toEqual(['tone-c', 'tone-a', 'tone-b']);
+    await expect(songButton(page, 'tone-c')).toBeFocused();
+  });
+
+  test('dragging a row with the mouse reorders the list', async ({ page }) => {
+    await setup(page);
+    const source = await boxOf(songButton(page, 'tone-c'));
+    const target = await boxOf(songButton(page, 'tone-a'));
+    await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+    await page.mouse.down();
+    // Small first move passes the 6px activation distance, then glide over the first row.
+    await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2 - 12, {
+      steps: 3,
+    });
+    await page.mouse.move(target.x + target.width / 2, target.y + 4, { steps: 12 });
+    await page.mouse.up();
     await expect.poll(() => songOrder(page)).toEqual(['tone-c', 'tone-a', 'tone-b']);
   });
 });

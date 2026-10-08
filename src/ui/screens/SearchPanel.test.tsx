@@ -1,4 +1,4 @@
-import { act, screen, within } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { makeTrack } from '../../core/test-utils/fakes';
 import type { AlbumDetail, ArtistDetail, SearchResults } from '../../providers/MusicProvider';
@@ -140,11 +140,12 @@ describe('SearchPanel', () => {
 
     await open();
     await user.click(await screen.findByRole('menuitem', { name: strings.add.playNow }));
-    expect(titles(h)).toHaveLength(4);
+    // Title t1 is already the current song, so "play now" resumes it instead of adding a copy.
+    expect(titles(h)).toHaveLength(3);
     expect(h.store.getSnapshot().player.status).toBe('playing');
-  });
+  }, 20_000);
 
-  it('inserts at a chosen position through the dialog', async () => {
+  it('inserts after a chosen song with the keyboard through the "Insertar después de…" submenu', async () => {
     const { h, user } = setup();
     act(() => {
       h.store.addLast(makeTrack('a'));
@@ -153,13 +154,42 @@ describe('SearchPanel', () => {
     await search(user);
     await user.click(screen.getByRole('button', { name: strings.add.moreActions('Title t2') }));
     await user.click(await screen.findByRole('menuitem', { name: strings.add.insertAt }));
-    const dialog = await screen.findByRole('dialog', { name: strings.insert.title });
-    const input = within(dialog).getByRole('textbox', { name: strings.add.positionLabel });
-    await user.clear(input);
-    await user.type(input, '2');
-    await user.click(within(dialog).getByRole('button', { name: strings.add.confirm }));
+    await screen.findByRole('menuitem', { name: strings.add.insertAfterItem(1, 'Title a') });
+    await user.keyboard('{ArrowRight}{ArrowDown}{Enter}');
     expect(titles(h)).toEqual(['Title a', 'Title t2', 'Title b']);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  }, 20_000);
+
+  it('inserts at the start through the first item of the submenu', async () => {
+    const { h, user } = setup();
+    act(() => h.store.addLast(makeTrack('a')));
+    await search(user);
+    await user.click(screen.getByRole('button', { name: strings.add.moreActions('Title t1') }));
+    await user.click(await screen.findByRole('menuitem', { name: strings.add.insertAt }));
+    await screen.findByRole('menuitem', { name: strings.add.insertAtStart });
+    await user.keyboard('{ArrowRight}{Enter}');
+    expect(titles(h)).toEqual(['Title t1', 'Title a']);
+  });
+
+  it('adds to another playlist from the "Agregar a playlist" submenu without switching', async () => {
+    const { h, user } = setup();
+    const firstId = h.store.getSnapshot().activePlaylistId;
+    await act(async () => {
+      await h.store.createPlaylist('Rock');
+      h.store.switchPlaylist(firstId);
+    });
+    await search(user);
+    await user.click(screen.getByRole('button', { name: strings.add.moreActions('Title t1') }));
+    await user.click(await screen.findByRole('menuitem', { name: strings.add.addToPlaylist }));
+    await screen.findByRole('menuitem', {
+      name: strings.add.playlistItem('Rock', strings.playlist.songCount(0)),
+    });
+    // Submenus are keyboard-first: ArrowRight enters, ArrowDown reaches the second playlist.
+    await user.keyboard('{ArrowRight}{ArrowDown}{Enter}');
+    const snapshot = h.store.getSnapshot();
+    expect(snapshot.activePlaylistId).toBe(firstId);
+    expect(snapshot.songs).toHaveLength(0);
+    expect(snapshot.playlists.map((p) => p.size)).toEqual([0, 1]);
   });
 
   it('applies the filter and asks the provider for that type only', async () => {

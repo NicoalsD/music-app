@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDroppable } from '@dnd-kit/core';
 import { Ellipsis, House, Plus, Search } from 'lucide-react';
 import { usePlayerSnapshot } from '../../state';
 import type { PlayerSnapshot, PlaylistSummary } from '../../state';
@@ -9,6 +10,7 @@ import { Menu, MenuContent, MenuItem, MenuTrigger } from '../components/Menu';
 import { RevealList } from '../components/Reveal';
 import { ShojiPanel } from '../components/ShojiPanel';
 import { cx } from '../cx';
+import { useDndUi } from '../dnd/dndContext';
 import { strings } from '../i18n/es';
 import { ImportFilesButton } from './ImportFilesButton';
 import { PlaylistDialogs } from './PlaylistDialogs';
@@ -119,22 +121,36 @@ interface PlaylistEntryProps {
 
 function PlaylistEntry({ playlist, canDelete, onOpen, onRename, onDelete }: PlaylistEntryProps) {
   const count = strings.playlist.songCount(playlist.size);
+  const ui = useDndUi();
+  const dragging = ui.activeKind === 'track';
+  const { setNodeRef, isOver } = useDroppable({
+    id: `playlist:${playlist.id}`,
+    data: { type: 'playlist', playlistId: playlist.id, name: playlist.name },
+    disabled: !dragging,
+  });
+  const over = dragging && isOver;
   return (
     <>
       <button
+        ref={setNodeRef}
         type="button"
         className={styles.item}
         aria-label={strings.sidebar.openPlaylist(playlist.name, count)}
         aria-current={playlist.isActive ? 'true' : undefined}
         data-active={playlist.isActive ? 'true' : 'false'}
+        data-drop={over ? 'over' : dragging ? 'ready' : 'idle'}
         onClick={onOpen}
       >
         <span className={styles.seal}>
-          {playlist.isActive ? <Hanko kanji={strings.sidebar.activeKanji} size={24} /> : null}
+          {over ? (
+            <Plus size={20} strokeWidth={2} aria-hidden="true" />
+          ) : playlist.isActive ? (
+            <Hanko kanji={strings.sidebar.activeKanji} size={24} />
+          ) : null}
         </span>
         <span className={styles.text}>
           <span className={styles.name}>{playlist.name}</span>
-          <span className={styles.count}>{count}</span>
+          <span className={styles.count}>{over ? strings.dnd.dropOnPlaylist : count}</span>
         </span>
       </button>
       <Menu>

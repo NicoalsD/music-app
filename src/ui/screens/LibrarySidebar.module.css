@@ -145,6 +145,19 @@
   text-align: center;
 }
 
+/* While a song from the search is dragged, every playlist shows it can take it. */
+.item[data-drop='ready'] {
+  border-style: dashed;
+  border-color: var(--ai);
+}
+
+.item[data-drop='over'] {
+  border-style: solid;
+  border-width: 3px;
+  border-color: var(--ink);
+  background: var(--ai-wash);
+}
+
 @media (hover: hover) and (pointer: fine) {
   .navItem:hover:not([aria-current='page']),
   .item:hover:not([data-active='true']) {

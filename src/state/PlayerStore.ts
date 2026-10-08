@@ -241,6 +241,18 @@ export class PlayerStore {
     );
   }
 
+  /**
+   * Appends a track to the end of any playlist without switching to it. Playback and the active
+   * playlist stay untouched (drag a result onto a sidebar playlist).
+   */
+  addToPlaylist(playlistId: string, track: Track): void {
+    const target = this.#library.get(playlistId);
+    target.addLast(track);
+    if (target.id === this.#active().id) this.#mutated();
+    else this.#refresh();
+    this.#notifier.notify(strings.dnd.addedToPlaylist(target.name));
+  }
+
   /** Inserts right after the current song ("play next"). */
   addNext(track: Track): void {
     const playlist = this.#active();

@@ -1,0 +1,30 @@
+.line {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: var(--z-sticky);
+  height: 2px;
+  background: var(--ink);
+  pointer-events: none;
+}
+
+.line[data-edge='before'] {
+  top: -1px;
+}
+
+.line[data-edge='after'] {
+  bottom: -1px;
+}
+
+/* The knot: a small lantern-shaped tie at the start of the line. */
+.line::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 0;
+  width: 8px;
+  height: 10px;
+  border: var(--outline-width) solid var(--ink);
+  border-radius: 40% 40% 50% 50%;
+  background: var(--shu);
+}

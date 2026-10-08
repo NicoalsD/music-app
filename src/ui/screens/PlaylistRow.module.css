@@ -15,12 +15,26 @@
   background: var(--ai-wash);
 }
 
+.row {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* The ticket that follows the pointer is the dragged song; this row is the slot it came from. */
 .row[data-dragging='true'] {
   z-index: var(--z-sticky);
-  background: var(--paper-raised);
-  box-shadow:
-    0 1px 0 var(--line),
-    0 2px 0 var(--stack-shadow);
+  background: var(--paper-sunk);
+  opacity: 0.55;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .row:hover {
+    cursor: grab;
+  }
+
+  .row:hover button {
+    cursor: pointer;
+  }
 }
 
 .index {

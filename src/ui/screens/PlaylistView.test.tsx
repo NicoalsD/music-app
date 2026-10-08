@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, createEvent, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { makeTrack } from '../../core/test-utils/fakes';
 import { serializeState } from '../../state/persistence';
@@ -7,6 +7,7 @@ import type { Harness } from '../../state/test-utils/harness';
 import { PlaylistLibrary } from '../../core/PlaylistLibrary';
 import { CounterIds, FakeClock } from '../../core/test-utils/fakes';
 import { settle } from '../../player/test-utils/FakeAudioOutput';
+import { AppDndProvider } from '../dnd/AppDndProvider';
 import { strings } from '../i18n/es';
 import { PlaylistView } from './PlaylistView';
 import { renderWithStore } from './test-utils/render';
@@ -19,7 +20,12 @@ const titles = (h: Harness) => h.store.getSnapshot().songs.map((s) => s.title);
 
 function renderList(ids: string[] = ['a', 'b', 'c'], options: { realToasts?: boolean } = {}) {
   const onGoToSearch = vi.fn();
-  const view = renderWithStore(<PlaylistView onGoToSearch={onGoToSearch} />, options);
+  const view = renderWithStore(
+    <AppDndProvider>
+      <PlaylistView onGoToSearch={onGoToSearch} />
+    </AppDndProvider>,
+    options,
+  );
   act(() => seed(view.h, ...ids));
   return { ...view, onGoToSearch, user: userEvent.setup() };
 }
@@ -146,7 +152,12 @@ describe('PlaylistView', () => {
       shuffle: false,
     });
     const h = createHarness({ saved });
-    renderWithStore(<PlaylistView onGoToSearch={() => undefined} />, { harness: h });
+    renderWithStore(
+      <AppDndProvider>
+        <PlaylistView onGoToSearch={() => undefined} />
+      </AppDndProvider>,
+      { harness: h },
+    );
     const user = userEvent.setup();
     const local = rowButton('Title l1');
     expect(local).toBeDisabled();
@@ -166,9 +177,9 @@ describe('PlaylistView', () => {
     expect(handle).toHaveAttribute('aria-roledescription');
     handle.focus();
     await user.keyboard(' ');
-    expect(await screen.findByText(strings.playlist.dndMoved('Title a', 1, 3))).toBeInTheDocument();
+    expect(await screen.findByText(strings.dnd.moved('Title a', 1, 3))).toBeInTheDocument();
     await user.keyboard('{Escape}');
-    expect(await screen.findByText(strings.playlist.dndCancelled('Title a'))).toBeInTheDocument();
+    expect(await screen.findByText(strings.dnd.cancelled('Title a'))).toBeInTheDocument();
   });
 
   it('moves a song with the keyboard sensor and calls store.move', async () => {
@@ -181,59 +192,151 @@ describe('PlaylistView', () => {
     await user.keyboard('{ArrowDown}');
     await user.keyboard(' ');
     await waitFor(() => expect(titles(h)).toEqual(['Title b', 'Title a', 'Title c']));
-    expect(
-      await screen.findByText(strings.playlist.dndDropped('Title a', 2, 3)),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(strings.dnd.dropped('Title a', 2, 3))).toBeInTheDocument();
   });
 
-  describe('move to position', () => {
-    const openMove = async (user: ReturnType<typeof userEvent.setup>, title: string) => {
-      await user.click(screen.getByRole('button', { name: strings.playlist.rowMenuNamed(title) }));
-      await user.click(await screen.findByRole('menuitem', { name: strings.playlist.moveTo }));
-      return screen.findByRole('dialog', { name: strings.playlist.moveTitle });
-    };
+  describe('moving without dragging', () => {
+    const openRowMenu = (user: ReturnType<typeof userEvent.setup>, title: string) =>
+      user.click(screen.getByRole('button', { name: strings.playlist.rowMenuNamed(title) }));
 
-    it('moves the last song to position 1 and previews its new neighbours', async () => {
+    it('moves the last song to the start from the row menu, with no dialog', async () => {
       const { h, user } = renderList();
-      const dialog = await openMove(user, 'Title c');
-      const input = within(dialog).getByRole('textbox', { name: strings.add.positionLabel });
-      expect(input).toHaveValue('3');
-      await user.clear(input);
-      await user.type(input, '1');
-      const preview = within(dialog).getByRole('list', { name: strings.insert.previewLabel });
-      expect(
-        within(preview)
-          .getAllByRole('listitem')
-          .map((li) => li.textContent),
-      ).toEqual([`Title c${strings.insert.previewNew}`, 'Title a']);
-      await user.click(within(dialog).getByRole('button', { name: strings.playlist.moveConfirm }));
-      expect(titles(h)).toEqual(['Title c', 'Title a', 'Title b']);
-      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    });
-
-    it('only accepts positions 1..size', async () => {
-      const { h, user } = renderList();
-      const dialog = await openMove(user, 'Title a');
-      const input = within(dialog).getByRole('textbox', { name: strings.add.positionLabel });
-      await user.clear(input);
-      await user.type(input, '4');
-      expect(
-        within(dialog).getByRole('button', { name: strings.playlist.moveConfirm }),
-      ).toBeDisabled();
-      expect(within(dialog).getByText(strings.insert.errorRange(3))).toBeInTheDocument();
-      await user.clear(input);
-      await user.type(input, '3{Enter}');
-      expect(titles(h)).toEqual(['Title b', 'Title c', 'Title a']);
-    });
-
-    it('is disabled with a single song', async () => {
-      const { user } = renderList(['a']);
+      await openRowMenu(user, 'Title c');
       await user.click(
-        screen.getByRole('button', { name: strings.playlist.rowMenuNamed('Title a') }),
+        await screen.findByRole('menuitem', { name: strings.playlist.moveFirstItem }),
       );
+      expect(titles(h)).toEqual(['Title c', 'Title a', 'Title b']);
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       expect(
-        await screen.findByRole('menuitem', { name: strings.playlist.moveTo }),
+        await screen.findByText(strings.playlist.movedTo('Title c', 1, 3)),
+      ).toBeInTheDocument();
+    });
+
+    it.each([
+      ['moveUpItem', 'Title b', ['Title b', 'Title a', 'Title c']],
+      ['moveDownItem', 'Title b', ['Title a', 'Title c', 'Title b']],
+      ['moveLastItem', 'Title a', ['Title b', 'Title c', 'Title a']],
+    ] as const)('"%s" moves %s', async (item, title, expected) => {
+      const { h, user } = renderList();
+      await openRowMenu(user, title);
+      await user.click(await screen.findByRole('menuitem', { name: strings.playlist[item] }));
+      expect(titles(h)).toEqual(expected);
+    });
+
+    it('disables the moves that cannot happen at the ends and with one song', async () => {
+      const { user } = renderList();
+      await openRowMenu(user, 'Title a');
+      expect(
+        await screen.findByRole('menuitem', { name: strings.playlist.moveUpItem }),
       ).toHaveAttribute('aria-disabled', 'true');
+      expect(
+        screen.getByRole('menuitem', { name: strings.playlist.moveFirstItem }),
+      ).toHaveAttribute('aria-disabled', 'true');
+      expect(
+        screen.getByRole('menuitem', { name: strings.playlist.moveDownItem }),
+      ).not.toHaveAttribute('aria-disabled');
+    });
+
+    it('disables every move for a single song', async () => {
+      const { user } = renderList(['a']);
+      await openRowMenu(user, 'Title a');
+      for (const name of [
+        strings.playlist.moveUpItem,
+        strings.playlist.moveDownItem,
+        strings.playlist.moveFirstItem,
+        strings.playlist.moveLastItem,
+      ]) {
+        expect(await screen.findByRole('menuitem', { name })).toHaveAttribute(
+          'aria-disabled',
+          'true',
+        );
+      }
+    });
+  });
+
+  describe('Alt+Arrow keyboard moves', () => {
+    it('Alt+ArrowUp moves the focused row up, announces it and keeps focus on it', async () => {
+      const { h, user } = renderList();
+      rowButton('Title b').focus();
+      await user.keyboard('{Alt>}{ArrowUp}{/Alt}');
+      expect(titles(h)).toEqual(['Title b', 'Title a', 'Title c']);
+      expect(
+        await screen.findByText(strings.playlist.movedTo('Title b', 1, 3)),
+      ).toBeInTheDocument();
+      await waitFor(() => expect(rowButton('Title b')).toHaveFocus());
+    });
+
+    it('Alt+ArrowDown moves one step down', async () => {
+      const { h, user } = renderList();
+      rowButton('Title a').focus();
+      await user.keyboard('{Alt>}{ArrowDown}{/Alt}');
+      expect(titles(h)).toEqual(['Title b', 'Title a', 'Title c']);
+      await waitFor(() => expect(rowButton('Title a')).toHaveFocus());
+    });
+
+    it('Alt+End and Alt+Home jump to the last and first place', async () => {
+      const { h, user } = renderList();
+      rowButton('Title a').focus();
+      await user.keyboard('{Alt>}{End}{/Alt}');
+      expect(titles(h)).toEqual(['Title b', 'Title c', 'Title a']);
+      expect(
+        await screen.findByText(strings.playlist.movedTo('Title a', 3, 3)),
+      ).toBeInTheDocument();
+      await waitFor(() => expect(rowButton('Title a')).toHaveFocus());
+      await user.keyboard('{Alt>}{Home}{/Alt}');
+      expect(titles(h)).toEqual(['Title a', 'Title b', 'Title c']);
+    });
+
+    it('does nothing at the ends and without Alt', async () => {
+      const { h, user } = renderList();
+      rowButton('Title a').focus();
+      await user.keyboard('{Alt>}{ArrowUp}{/Alt}');
+      await user.keyboard('{ArrowDown}');
+      expect(titles(h)).toEqual(['Title a', 'Title b', 'Title c']);
+    });
+  });
+
+  describe('dropping audio files from the system', () => {
+    const files = [new File(['x'], 'x.mp3', { type: 'audio/mpeg' })];
+    const dataTransfer = { types: ['Files'], files, dropEffect: 'none' };
+
+    function dragAt(target: Element, type: 'dragOver' | 'drop', clientY: number) {
+      const event = createEvent[type](target, { dataTransfer });
+      Object.defineProperty(event, 'clientY', { value: clientY });
+      fireEvent(target, event);
+    }
+
+    it('shows the insertion line where the files will land and imports there', async () => {
+      const { h, container } = renderList();
+      h.local.nextResult = { tracks: [makeTrack('x')], rejected: [] };
+      const zone = container.querySelector('[data-file-over]');
+      expect(zone).not.toBeNull();
+      // Rows are 60px tall, so y=70 is in the upper half of row 2: it lands at position 2.
+      dragAt(zone as Element, 'dragOver', 70);
+      const line = screen.getByTestId('insertion-line');
+      expect(line.closest('li')).toBe(screen.getAllByRole('listitem')[1]);
+      dragAt(zone as Element, 'drop', 70);
+      await waitFor(() => expect(titles(h)).toEqual(['Title a', 'Title x', 'Title b', 'Title c']));
+      expect(screen.queryByTestId('insertion-line')).not.toBeInTheDocument();
+    });
+
+    it('lands at the end when the pointer is below the last row', async () => {
+      const { h, container } = renderList();
+      h.local.nextResult = { tracks: [makeTrack('x')], rejected: [] };
+      const zone = container.querySelector('[data-file-over]') as Element;
+      dragAt(zone, 'dragOver', 500);
+      expect(screen.getByTestId('insertion-line')).toHaveAttribute('data-edge', 'after');
+      dragAt(zone, 'drop', 500);
+      await waitFor(() => expect(titles(h)).toEqual(['Title a', 'Title b', 'Title c', 'Title x']));
+    });
+
+    it('ignores drags that carry no files', () => {
+      const { container } = renderList();
+      const zone = container.querySelector('[data-file-over]') as Element;
+      const event = createEvent.dragOver(zone, { dataTransfer: { types: ['text/plain'] } });
+      fireEvent(zone, event);
+      expect(event.defaultPrevented).toBe(false);
+      expect(screen.queryByTestId('insertion-line')).not.toBeInTheDocument();
     });
   });
 });

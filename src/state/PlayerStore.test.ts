@@ -409,6 +409,62 @@ describe('PlayerStore playlists', () => {
   });
 });
 
+describe('PlayerStore addToPlaylist', () => {
+  it('appends to another playlist without switching or interrupting playback', async () => {
+    const h = createHarness();
+    seed(h, 'a', 'b');
+    const firstId = h.store.getSnapshot().activePlaylistId;
+    const secondId = await h.store.createPlaylist('Rock');
+    h.store.switchPlaylist(firstId);
+    await settle();
+    h.store.togglePlay();
+    await settle();
+    const before = h.store.getSnapshot();
+    expect(before.player.status).toBe('playing');
+
+    h.store.addToPlaylist(secondId, makeTrack('z'));
+    await settle();
+
+    const after = h.store.getSnapshot();
+    expect(after.activePlaylistId).toBe(firstId);
+    expect(titles(h)).toEqual(['Title a', 'Title b']);
+    expect(after.currentEntryId).toBe(before.currentEntryId);
+    expect(after.player.status).toBe('playing');
+    expect(after.playlists.map((p) => [p.name, p.size])).toEqual([
+      ['Mi lista', 2],
+      ['Rock', 1],
+    ]);
+    expect(h.notifier.notices.at(-1)).toBe(strings.dnd.addedToPlaylist('Rock'));
+  });
+
+  it('appends at the end of the active playlist when it is the target', () => {
+    const h = createHarness();
+    seed(h, 'a');
+    const id = h.store.getSnapshot().activePlaylistId;
+    h.store.addToPlaylist(id, makeTrack('b'));
+    expect(titles(h)).toEqual(['Title a', 'Title b']);
+    expect(h.notifier.notices.at(-1)).toBe(strings.dnd.addedToPlaylist('Mi lista'));
+  });
+
+  it('keeps the track when the target playlist is later opened', async () => {
+    const h = createHarness();
+    const firstId = h.store.getSnapshot().activePlaylistId;
+    const secondId = await h.store.createPlaylist('Rock');
+    h.store.switchPlaylist(firstId);
+    await settle();
+    h.store.addToPlaylist(secondId, makeTrack('z'));
+    h.store.switchPlaylist(secondId);
+    await settle();
+    expect(titles(h)).toEqual(['Title z']);
+  });
+
+  it('throws for an unknown playlist and does not notify', () => {
+    const h = createHarness();
+    expect(() => h.store.addToPlaylist('missing', makeTrack('z'))).toThrow();
+    expect(h.notifier.notices).toEqual([]);
+  });
+});
+
 describe('PlayerStore local files', () => {
   it('imports accepted files at the end and reports the rejected ones', async () => {
     const h = createHarness();
