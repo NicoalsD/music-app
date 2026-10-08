@@ -8,3 +8,4 @@ export type { RepeatMode, RemoveResult, PlaylistParams } from './Playlist';
 export { ShuffleOrder } from './ShuffleOrder';
 export { PlaylistLibrary, DEFAULT_PLAYLIST_NAME } from './PlaylistLibrary';
 export type { PlaylistLibraryDeps } from './PlaylistLibrary';
+export * from './Lyrics';

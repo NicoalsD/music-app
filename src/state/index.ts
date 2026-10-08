@@ -16,3 +16,11 @@ export type {
 } from './PlayerStore';
 export { StoreProvider, useStore, usePlayerSnapshot, useProgress } from './usePlayer';
 export * from './search';
+export {
+  LyricsProviderContext,
+  LyricsProviderScope,
+  useLyricsProvider,
+  useLyrics,
+  useLyricsFrom,
+} from './useLyrics';
+export type { LyricsStatus, UseLyricsResult, LyricsProviderProps } from './useLyrics';
